@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Created by antleb on 11/16/16.
@@ -24,7 +25,7 @@ public class ContentServiceImpl implements ContentService {
         SearchResult result = new SearchResult();
         Facet sourceFacet = new Facet();
 
-        result.setFacets(new HashMap<>());
+        result.setFacets(new ArrayList<>());
 
         sourceFacet.setField("source");
         sourceFacet.setLabel("Content Source");
@@ -32,19 +33,21 @@ public class ContentServiceImpl implements ContentService {
 
         if (contentConnectors != null) {
             for (ContentConnector connector:contentConnectors) {
-                SearchResult res = connector.search(query);
-                Value value = new Value();
+                if (connector.getSourceName().toLowerCase().startsWith("mock")) {
+                    SearchResult res = connector.search(query);
+                    Value value = new Value();
 
-                value.setValue(connector.getSourceName());
-                value.setCount(res.getTotalHits());
+                    value.setValue(connector.getSourceName());
+                    value.setCount(res.getTotalHits());
 
-                sourceFacet.getValues().add(value);
+                    sourceFacet.getValues().add(value);
 
-                result = merge(result, res);
+                    result = merge(result, res);
+                }
             }
         }
 
-        result.getFacets().put(sourceFacet.getField(), sourceFacet);
+        result.getFacets().add(sourceFacet);
 
         return result;
     }
@@ -61,6 +64,15 @@ public class ContentServiceImpl implements ContentService {
         //TODO: how to merge results? do we need to?
 
         return searchResult;
+    }
+
+    private List<Facet> mergeFacets(List<Facet> f1, List<Facet> f2) {
+//        Map<String, Facet> mf1 = new HashMap<>();
+
+        return mergeFacets(
+                f1.stream().collect(Collectors.toMap(f -> f.getField(), f -> f)),
+                f2.stream().collect(Collectors.toMap(f -> f.getField(), f -> f))).
+                    values().stream().collect(Collectors.toList());
     }
 
     private Map<String, Facet> mergeFacets(Map<String, Facet> f1, Map<String, Facet> f2) {
