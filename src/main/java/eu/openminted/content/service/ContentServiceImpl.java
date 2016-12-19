@@ -33,7 +33,7 @@ public class ContentServiceImpl implements ContentService {
 
         if (contentConnectors != null) {
             for (ContentConnector connector:contentConnectors) {
-                if (connector.getSourceName().toLowerCase().startsWith("mock")) {
+                if (!connector.getSourceName().toLowerCase().startsWith("mock")) {
                     SearchResult res = connector.search(query);
                     Value value = new Value();
 
