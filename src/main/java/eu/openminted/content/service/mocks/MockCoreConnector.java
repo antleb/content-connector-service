@@ -19,9 +19,10 @@ public class MockCoreConnector implements ContentConnector {
     public SearchResult search(Query query) {
         List<Facet> facets = new ArrayList<>();
 
-        facets.add(new Facet("language", "Language", Arrays.asList(new Value("english", 1200), new Value("french", 130), new Value("italian", 45), new Value("greel", 1011))));
-        facets.add(new Facet("subject", "Subject", Arrays.asList(new Value("physics", 1890), new Value("maths", 230))));
-        facets.add(new Facet("licence", "Licence", Arrays.asList(new Value("CC", 890), new Value("CC-BY", 980), new Value("CC-A-B-C", 1032))));
+        facets.add(new Facet("documentLanguage", "documentLanguage", Arrays.asList(new Value("English", 1200), new Value("French", 130), new Value("Italian", 45), new Value("Greek", 1011))));
+        facets.add(new Facet("licence", "licence", Arrays.asList(new Value("Closed Access", 1890), new Value("Open Access", 230))));
+        facets.add(new Facet("publicationDate", "publicationDate", Arrays.asList(new Value("2010", 890), new Value("2011", 980), new Value("2012", 1032))));
+        facets.add(new Facet("documentType", "documentType", Arrays.asList(new Value("fullText", 2690))));
 
         return new SearchResult(new ArrayList<>(), 2690, 0, 9, facets);
     }
