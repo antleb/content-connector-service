@@ -1,0 +1,6 @@
+-- DROP TABLE corpus IF EXISTS;
+
+CREATE TABLE corpus (
+  id    VARCHAR(50) PRIMARY KEY,
+  query VARCHAR(500)
+);
