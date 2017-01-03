@@ -3,8 +3,11 @@ package eu.openminted.content.service.rest;
 import eu.openminted.content.connector.Query;
 import eu.openminted.content.connector.SearchResult;
 import eu.openminted.content.service.ContentService;
+import eu.openminted.content.service.dao.CorpusDao;
 import eu.openminted.corpus.CorpusBuilder;
 import eu.openminted.registry.domain.Corpus;
+import eu.openminted.registry.domain.MetadataHeaderInfo;
+import eu.openminted.registry.domain.MetadataIdentifier;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,6 +21,8 @@ import java.util.List;
  */
 @RestController
 public class ContentServiceController {
+    @Autowired
+    private CorpusDao corpusDao;
 
     @Autowired
     private ContentService contentService;
@@ -49,5 +54,22 @@ public class ContentServiceController {
     public Corpus prepare(@RequestBody Query query) {
 
         return corpusBuilder.prepareCorpus(query);
+    }
+
+    @RequestMapping(value = "/corpus/build", method = RequestMethod.GET, headers = "Accept=application/json")
+    public String build(@RequestParam(value = "id") String id) {
+        try {
+            Corpus corpus = new Corpus();
+            MetadataHeaderInfo metadataHeaderInfo = new MetadataHeaderInfo();
+            MetadataIdentifier metadataIdentifier = new MetadataIdentifier();
+            metadataIdentifier.setValue(id);
+            metadataHeaderInfo.setMetadataRecordIdentifier(metadataIdentifier);
+            corpus.setMetadataHeaderInfo(metadataHeaderInfo);
+            corpusBuilder.buildCorpus(corpus);
+            System.out.println(corpus.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue());
+        } catch (Exception ex) {
+            id = ex.getMessage();
+        }
+        return id;
     }
 }

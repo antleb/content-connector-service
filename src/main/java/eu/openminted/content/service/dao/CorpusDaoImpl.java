@@ -40,11 +40,11 @@ public class CorpusDaoImpl implements CorpusDao{
     }
 
     @Override
-    public void insert(String corpusId, String query) {
+    public void insert(String id, String query) {
         Map<String, Object> params = new HashMap<>();
-        params.put("corpusId", corpusId);
+        params.put("id", id);
         params.put("query", query);
 
-        this.jdbcTemplate.update("insert into corpus values (:corpusId, :query);", params);
+        this.jdbcTemplate.update("insert into corpus values (:id, :query);", params);
     }
 }

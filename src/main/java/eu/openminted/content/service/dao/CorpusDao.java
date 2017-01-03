@@ -12,5 +12,5 @@ public interface CorpusDao {
 
     List<CorpusModel> findAll();
 
-    void insert(String corpusId, String query);
+    void insert(String id, String query);
 }

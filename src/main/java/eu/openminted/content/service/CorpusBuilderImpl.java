@@ -1,17 +1,18 @@
 package eu.openminted.content.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import eu.openminted.content.connector.*;
 import eu.openminted.content.service.dao.CorpusDao;
 import eu.openminted.content.service.extensions.SearchResultExtension;
+import eu.openminted.content.service.model.CorpusModel;
 import eu.openminted.corpus.CorpusBuilder;
 import eu.openminted.corpus.CorpusStatus;
 import eu.openminted.registry.domain.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * Created by constantine on 22/12/2016.
@@ -28,6 +29,8 @@ public class CorpusBuilderImpl implements CorpusBuilder {
     @Override
     public Corpus prepareCorpus(Query query) {
         Corpus corpusMetadata = new Corpus();
+        String queryString;
+        Query tempQuery = new Query(query.getKeyword(), query.getParams(), new ArrayList<>(), 0, 1);
 
         CorpusInfo corpusInfo = new CorpusInfo();
         MetadataHeaderInfo metadataHeaderInfo = new MetadataHeaderInfo();
@@ -43,7 +46,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         metadataIdentifier.setMetadataIdentifierSchemeName(MetadataIdentifierSchemeNameEnum.OTHER);
         metadataHeaderInfo.setMetadataRecordIdentifier(metadataIdentifier);
 
-        metadataHeaderInfo.setUserQuery(query.getKeyword());
+        metadataHeaderInfo.setUserQuery(tempQuery.getKeyword());
         metadataHeaderInfo.setMetadataLanguages(new ArrayList<>());
         corpusInfo.setDistributionInfos(new ArrayList<>());
 
@@ -55,20 +58,13 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         sourceFacet.setValues(new ArrayList<>());
 
         if (contentConnectors != null) {
-            query.setFrom(0);
-            query.setTo(1);
-            if (query.getFacets() == null)
-                query.setFacets(new ArrayList<>());
 
-            if (!query.getFacets().contains("licence"))
-                query.getFacets().add("licence");
-            if (!query.getFacets().contains("documentType"))
-                query.getFacets().add("documentType");
-            if (!query.getFacets().contains("documentLanguage"))
-                query.getFacets().add("documentLanguage");
+            tempQuery.getFacets().add("licence");
+            tempQuery.getFacets().add("documentType");
+            tempQuery.getFacets().add("documentLanguage");
 
             for (ContentConnector connector : contentConnectors) {
-                SearchResult res = connector.search(query);
+                SearchResult res = connector.search(tempQuery);
                 Value value = new Value();
 
                 value.setValue(connector.getSourceName());
@@ -88,7 +84,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             System.out.println(facet.getField());
 
             // language
-            if(facet.getField().equalsIgnoreCase("documentLanguage")) {
+            if (facet.getField().equalsIgnoreCase("documentLanguage")) {
                 for (Value value : facet.getValues()) {
                     if (value.getCount() > 0) {
                         Language language = new Language();
@@ -96,8 +92,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                         if (name.contains("Greek")) {
                             if (name.equalsIgnoreCase(ancientGreek)) {
                                 name = ancientGreek;
-                            }
-                            else {
+                            } else {
                                 name = modernGreek;
                             }
                         }
@@ -110,7 +105,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             }
 
             // licence
-            if(facet.getField().equalsIgnoreCase("licence")) {
+            if (facet.getField().equalsIgnoreCase("licence")) {
                 for (Value value : facet.getValues()) {
                     System.out.println(value.getValue() + " : " + value.getCount());
                     if (value.getCount() > 0) {
@@ -139,14 +134,42 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
         corpusMetadata.setCorpusInfo(corpusInfo);
         corpusMetadata.setMetadataHeaderInfo(metadataHeaderInfo);
-        corpusDao.insert(metadataIdentifier.getValue(), query.toString());
-        System.out.println(corpusDao.findAll());
+
+        try {
+            queryString = new ObjectMapper().writeValueAsString(query);
+        }
+        catch (JsonProcessingException e) {
+            e.printStackTrace();
+            queryString = "{\"keyword\":\"" + query.getKeyword() + "\",\"params\":{";
+            String parameter = "";
+            for (String paramKey : query.getParams().keySet()) {
+                if (!parameter.isEmpty()) {
+                    queryString += ",";
+                }
+                parameter = '\"' + paramKey + "\":[\"" + String.join("\",\"", query.getParams().get(paramKey)) + "\"]";
+                queryString += parameter;
+            }
+            queryString += "},\"facets\":[\"" +
+                    String.join("\",\"", query.getFacets()) +
+                    "\"],\"from\":" +
+                    query.getFrom() +
+                    ",\"to\":" +
+                    query.getTo();
+        }
+
+        corpusDao.insert(metadataIdentifier.getValue(), queryString);
         return corpusMetadata;
     }
 
     @Override
     public void buildCorpus(Corpus corpusMetadata) {
+        try {
+            CorpusModel corpusModel = corpusDao.find(corpusMetadata.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue());
 
+            System.out.println(corpusModel.getQuery());
+        } catch (Exception ex) {
+            System.out.println(ex.getMessage());
+        }
     }
 
     @Override
