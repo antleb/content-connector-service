@@ -6,9 +6,10 @@ import javax.persistence.Entity;
  * Created by constantine on 25/12/2016.
  */
 @Entity
-public class CorpusModel {
+public class CorpusBuilderInfoModel {
     private String id;
     private String query;
+    private String status;
 
     public String getId() {
         return id;
@@ -26,11 +27,20 @@ public class CorpusModel {
         this.query = query;
     }
 
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
     @Override
     public String toString() {
-        return "CorpusModel{" +
-                "id=" + id +
+        return "CorpusBuilderInfoModel{" +
+                "id='" + id + '\'' +
                 ", query='" + query + '\'' +
+                ", status='" + status + '\'' +
                 '}';
     }
 }

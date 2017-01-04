@@ -3,15 +3,20 @@ package eu.openminted.content.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import eu.openminted.content.connector.*;
-import eu.openminted.content.service.dao.CorpusDao;
+import eu.openminted.content.service.dao.CorpusBuilderInfoDao;
 import eu.openminted.content.service.extensions.SearchResultExtension;
-import eu.openminted.content.service.model.CorpusModel;
+import eu.openminted.content.service.model.CorpusBuilderInfoModel;
 import eu.openminted.corpus.CorpusBuilder;
 import eu.openminted.corpus.CorpusStatus;
 import eu.openminted.registry.domain.*;
+import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.*;
 
 /**
@@ -19,17 +24,18 @@ import java.util.*;
  */
 @Component
 public class CorpusBuilderImpl implements CorpusBuilder {
+    private static Logger log = Logger.getLogger(CorpusBuilderImpl.class.getName());
 
     @Autowired(required = false)
     private List<ContentConnector> contentConnectors;
 
     @Autowired
-    private CorpusDao corpusDao;
+    private CorpusBuilderInfoDao corpusBuilderInfoDao;
 
     @Override
     public Corpus prepareCorpus(Query query) {
         Corpus corpusMetadata = new Corpus();
-        String queryString;
+        String queryString = "";
         Query tempQuery = new Query(query.getKeyword(), query.getParams(), new ArrayList<>(), 0, 1);
 
         CorpusInfo corpusInfo = new CorpusInfo();
@@ -137,54 +143,77 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
         try {
             queryString = new ObjectMapper().writeValueAsString(query);
+            log.info(queryString);
         }
         catch (JsonProcessingException e) {
-            e.printStackTrace();
-            queryString = "{\"keyword\":\"" + query.getKeyword() + "\",\"params\":{";
-            String parameter = "";
-            for (String paramKey : query.getParams().keySet()) {
-                if (!parameter.isEmpty()) {
-                    queryString += ",";
-                }
-                parameter = '\"' + paramKey + "\":[\"" + String.join("\",\"", query.getParams().get(paramKey)) + "\"]";
-                queryString += parameter;
-            }
-            queryString += "},\"facets\":[\"" +
-                    String.join("\",\"", query.getFacets()) +
-                    "\"],\"from\":" +
-                    query.getFrom() +
-                    ",\"to\":" +
-                    query.getTo();
+            log.error("CorpusBuilderImpl.prepareCorpus: Unable to write value as String", e);
         }
 
-        corpusDao.insert(metadataIdentifier.getValue(), queryString);
+        if (!queryString.isEmpty())
+            corpusBuilderInfoDao.insert(metadataIdentifier.getValue(), queryString, CorpusStatus.CREATED);
+
         return corpusMetadata;
     }
 
     @Override
     public void buildCorpus(Corpus corpusMetadata) {
         try {
-            CorpusModel corpusModel = corpusDao.find(corpusMetadata.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue());
+            CorpusBuilderInfoModel corpusBuilderInfoModel = corpusBuilderInfoDao.find(corpusMetadata.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue());
+            System.out.println(corpusBuilderInfoModel);
+            Query query = new ObjectMapper().readValue(corpusBuilderInfoModel.getQuery(), Query.class);
+            corpusBuilderInfoModel.setStatus(CorpusStatus.SUBMITTED.toString());
 
-            System.out.println(corpusModel.getQuery());
+            if (contentConnectors != null) {
+                for (ContentConnector connector : contentConnectors) {
+                    new Thread(()->{
+                        System.out.println("Fetching metadata from " + connector.getSourceName());
+//                        InputStream inputStream = connector.fetchMetadata(query);
+//                        String line;
+//                        BufferedReader br = new BufferedReader(new InputStreamReader(inputStream));
+//                        try {
+//                            while ((line = br.readLine()) != null) {
+//                                System.out.println(line);
+//                            }
+//                        } catch (IOException e) {
+//                            e.printStackTrace();
+//                        }
+//                        finally {
+//                            try {
+//                                br.close();
+//                            } catch (IOException e) {
+//                                e.printStackTrace();
+//                            }
+//                        }
+                    }).start();
+                }
+                corpusBuilderInfoDao.updateStatus(corpusBuilderInfoModel.getId(), CorpusStatus.SUBMITTED);
+                corpusBuilderInfoModel = corpusBuilderInfoDao.find(corpusBuilderInfoModel.getId());
+                System.out.println(corpusBuilderInfoModel);
+            }
         } catch (Exception ex) {
-            System.out.println(ex.getMessage());
+            log.error("CorpusBuilderImpl.buildCorpus", ex);
         }
     }
 
     @Override
     public CorpusStatus getStatus(String s) {
-        return null;
+
+        CorpusBuilderInfoModel corpusBuilderInfoModel = corpusBuilderInfoDao.find(s);
+        return CorpusStatus.valueOf(corpusBuilderInfoModel.getStatus());
     }
 
     @Override
     public void cancelProcess(String s) {
 
+        CorpusBuilderInfoModel corpusBuilderInfoModel = corpusBuilderInfoDao.find(s);
+        corpusBuilderInfoDao.updateStatus(s, CorpusStatus.CANCELED);
     }
 
     @Override
     public void deleteCorpus(String s) {
 
+        CorpusBuilderInfoModel corpusBuilderInfoModel = corpusBuilderInfoDao.find(s);
+        corpusBuilderInfoDao.updateStatus(s, CorpusStatus.DELETED);
     }
 
     private String createCorpusId() {

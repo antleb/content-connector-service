@@ -1,6 +1,7 @@
 -- DROP TABLE corpus IF EXISTS;
 
-CREATE TABLE corpus (
+CREATE TABLE corpusbuilderinfo (
   id    VARCHAR(50) PRIMARY KEY,
-  query VARCHAR(500)
+  query VARCHAR(500),
+  status VARCHAR(15)
 );
