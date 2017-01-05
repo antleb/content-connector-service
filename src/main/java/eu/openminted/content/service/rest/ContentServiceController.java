@@ -68,7 +68,7 @@ public class ContentServiceController {
     }
 
     @RequestMapping(value = "/corpus/build", method = RequestMethod.POST, headers = "Accept=application/json")
-    public void build(@RequestParam(value = "corpus") Corpus corpus) {
+    public void build(@RequestBody Corpus corpus) {
 
         corpusBuilder.buildCorpus(corpus);
     }
