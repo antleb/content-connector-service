@@ -13,15 +13,10 @@ import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
-/**
- * Created by constantine on 22/12/2016.
- */
 @Component
 public class CorpusBuilderImpl implements CorpusBuilder {
     private static Logger log = Logger.getLogger(CorpusBuilderImpl.class.getName());
@@ -144,14 +139,19 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         try {
             queryString = new ObjectMapper().writeValueAsString(query);
             log.info(queryString);
-        }
-        catch (JsonProcessingException e) {
+        } catch (JsonProcessingException e) {
             log.error("CorpusBuilderImpl.prepareCorpus: Unable to write value as String", e);
         }
 
         if (!queryString.isEmpty())
             corpusBuilderInfoDao.insert(metadataIdentifier.getValue(), queryString, CorpusStatus.CREATED);
 
+        /*
+            Store service
+            open archive with corpusId
+            open subarchive metadata with name corpusId_metadata
+            open subarchive fulltext with name corpusId_fulltext
+         */
         return corpusMetadata;
     }
 
@@ -165,7 +165,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
             if (contentConnectors != null) {
                 for (ContentConnector connector : contentConnectors) {
-                    new Thread(()->{
+                    new Thread(() -> {
                         System.out.println("Fetching metadata from " + connector.getSourceName());
 //                        InputStream inputStream = connector.fetchMetadata(query);
 //                        String line;
@@ -184,6 +184,15 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 //                                e.printStackTrace();
 //                            }
 //                        }
+
+                        /*
+                        InputStream fetches metadata
+                        for each metadata
+                            store metadata to metadata subarchive with name documentId.xml
+                            call downloadFullText by the documentId
+                            for each fulltext result
+                                store each result to fulltext subarchive with name $documentId
+                         */
                     }).start();
                 }
                 corpusBuilderInfoDao.updateStatus(corpusBuilderInfoModel.getId(), CorpusStatus.SUBMITTED);
@@ -198,22 +207,37 @@ public class CorpusBuilderImpl implements CorpusBuilder {
     @Override
     public CorpusStatus getStatus(String s) {
 
-        CorpusBuilderInfoModel corpusBuilderInfoModel = corpusBuilderInfoDao.find(s);
-        return CorpusStatus.valueOf(corpusBuilderInfoModel.getStatus());
+        CorpusBuilderInfoModel corpusBuilderInfoModel;
+
+        try {
+            corpusBuilderInfoModel = corpusBuilderInfoDao.find(s);
+            return CorpusStatus.valueOf(corpusBuilderInfoModel.getStatus());
+        } catch (Exception e) {
+            log.error("CorpusBuilderImpl.cancelProcess", e);
+        }
+        return null;
     }
 
     @Override
     public void cancelProcess(String s) {
 
-        CorpusBuilderInfoModel corpusBuilderInfoModel = corpusBuilderInfoDao.find(s);
-        corpusBuilderInfoDao.updateStatus(s, CorpusStatus.CANCELED);
+        try {
+            corpusBuilderInfoDao.updateStatus(s, CorpusStatus.CANCELED);
+            log.info(corpusBuilderInfoDao.find(s));
+        } catch (Exception e) {
+            log.error("CorpusBuilderImpl.cancelProcess", e);
+        }
     }
 
     @Override
     public void deleteCorpus(String s) {
 
-        CorpusBuilderInfoModel corpusBuilderInfoModel = corpusBuilderInfoDao.find(s);
-        corpusBuilderInfoDao.updateStatus(s, CorpusStatus.DELETED);
+        try {
+            corpusBuilderInfoDao.updateStatus(s, CorpusStatus.DELETED);
+            log.info(corpusBuilderInfoDao.find(s));
+        } catch (Exception e) {
+            log.error("CorpusBuilderImpl.cancelProcess", e);
+        }
     }
 
     private String createCorpusId() {

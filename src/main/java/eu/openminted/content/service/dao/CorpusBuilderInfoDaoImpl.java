@@ -11,9 +11,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Created by constantine on 25/12/2016.
- */
 @Repository
 public class CorpusBuilderInfoDaoImpl implements CorpusBuilderInfoDao {
 

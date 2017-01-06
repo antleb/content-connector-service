@@ -7,9 +7,6 @@ import eu.openminted.registry.domain.Value;
 import java.util.*;
 import java.util.stream.Collectors;
 
-/**
- * Created by constantine on 23/12/2016.
- */
 public class SearchResultExtension extends SearchResult {
 
     public SearchResult merge(SearchResult result) {

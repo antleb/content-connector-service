@@ -5,9 +5,6 @@ import eu.openminted.corpus.CorpusStatus;
 
 import java.util.List;
 
-/**
- * Created by constantine on 25/12/2016.
- */
 public interface CorpusBuilderInfoDao {
     CorpusBuilderInfoModel find(String corpusId);
 

@@ -5,6 +5,7 @@ import eu.openminted.content.connector.SearchResult;
 import eu.openminted.content.service.ContentService;
 import eu.openminted.content.service.dao.CorpusBuilderInfoDao;
 import eu.openminted.corpus.CorpusBuilder;
+import eu.openminted.corpus.CorpusStatus;
 import eu.openminted.registry.domain.Corpus;
 import eu.openminted.registry.domain.MetadataHeaderInfo;
 import eu.openminted.registry.domain.MetadataIdentifier;
@@ -13,9 +14,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
 
-/**
- * Created by antleb on 11/16/16.
- */
 @RestController
 public class ContentServiceController {
     @Autowired
@@ -71,5 +69,20 @@ public class ContentServiceController {
     public void build(@RequestBody Corpus corpus) {
 
         corpusBuilder.buildCorpus(corpus);
+    }
+
+    @RequestMapping(value = "/corpus/status", method = RequestMethod.GET, headers = "Accept=application/json")
+    public CorpusStatus status(@RequestParam(value = "id") String id) {
+        return corpusBuilder.getStatus(id);
+    }
+
+    @RequestMapping(value = "/corpus/cancel", method = RequestMethod.GET, headers = "Accept=application/json")
+    public void cancel(@RequestParam(value = "id") String id) {
+        corpusBuilder.cancelProcess(id);
+    }
+
+    @RequestMapping(value = "/corpus/delete", method = RequestMethod.GET, headers = "Accept=application/json")
+    public void delete(@RequestParam(value = "id") String id) {
+        corpusBuilder.deleteCorpus(id);
     }
 }

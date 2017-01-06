@@ -2,9 +2,6 @@ package eu.openminted.content.service.model;
 
 import javax.persistence.Entity;
 
-/**
- * Created by constantine on 25/12/2016.
- */
 @Entity
 public class CorpusBuilderInfoModel {
     private String id;
