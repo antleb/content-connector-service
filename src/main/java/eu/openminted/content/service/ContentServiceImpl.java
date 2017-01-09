@@ -28,6 +28,14 @@ public class ContentServiceImpl implements ContentService {
             query.setKeyword("*:*");
         }
 
+        if (query.getFacets() == null) query.setFacets(new ArrayList<>());
+
+        if (!containsIgnoreCase(query.getFacets(), "publicationType")) query.getFacets().add("publicationType");
+        if (!containsIgnoreCase(query.getFacets(), "publicationYear")) query.getFacets().add("publicationYear");
+        if (!containsIgnoreCase(query.getFacets(), "rightsStmtName")) query.getFacets().add("rightsStmtName");
+        if (!containsIgnoreCase(query.getFacets(), "Licence")) query.getFacets().add("Licence");
+        if (!containsIgnoreCase(query.getFacets(), "documentLanguage")) query.getFacets().add("documentLanguage");
+
         SearchResult result = new SearchResult();
         Facet sourceFacet = new Facet();
 
@@ -133,5 +141,13 @@ public class ContentServiceImpl implements ContentService {
 
     public void setContentConnectors(List<ContentConnector> contentConnectors) {
         this.contentConnectors = contentConnectors;
+    }
+
+    public boolean containsIgnoreCase(List<String> list, String keyword) {
+
+        for (String item : list) {
+            if (item.equalsIgnoreCase(keyword)) return true;
+        }
+        return false;
     }
 }
