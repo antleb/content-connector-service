@@ -10,6 +10,7 @@ import eu.openminted.content.service.model.CorpusBuilderInfoModel;
 import eu.openminted.corpus.CorpusBuilder;
 import eu.openminted.corpus.CorpusStatus;
 import eu.openminted.registry.domain.*;
+import eu.openminted.store.restclient.StoreRESTClient;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -155,10 +156,8 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             open subarchive fulltext with name corpusId_fulltext
          */
 
-//        StoreRESTClient store = new StoreRESTClient("http://localhost:8080/");
-        String archiveID = "testingArchiveId";//store.createArchive();
-//        store.createSubArchive();
-
+        StoreRESTClient store = new StoreRESTClient("http://localhost:8080/");
+        String archiveID = store.createArchive();
 
         if (!queryString.isEmpty())
             corpusBuilderInfoDao.insert(metadataIdentifier.getValue(), queryString, CorpusStatus.CREATED, archiveID);
