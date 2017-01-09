@@ -7,6 +7,7 @@ public class CorpusBuilderInfoModel {
     private String id;
     private String query;
     private String status;
+    private String archiveId;
 
     public String getId() {
         return id;
@@ -32,12 +33,21 @@ public class CorpusBuilderInfoModel {
         this.status = status;
     }
 
+    public String getArchiveId() {
+        return archiveId;
+    }
+
+    public void setArchiveId(String archiveId) {
+        this.archiveId = archiveId;
+    }
+
     @Override
     public String toString() {
         return "CorpusBuilderInfoModel{" +
                 "id='" + id + '\'' +
                 ", query='" + query + '\'' +
                 ", status='" + status + '\'' +
+                ", archiveId='" + archiveId + '\'' +
                 '}';
     }
 }

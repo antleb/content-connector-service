@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import eu.openminted.content.connector.*;
 import eu.openminted.content.service.dao.CorpusBuilderInfoDao;
+import eu.openminted.content.service.extensions.FetchMetadataTask;
 import eu.openminted.content.service.extensions.SearchResultExtension;
 import eu.openminted.content.service.model.CorpusBuilderInfoModel;
 import eu.openminted.corpus.CorpusBuilder;
@@ -16,6 +17,8 @@ import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 
 @Component
 public class CorpusBuilderImpl implements CorpusBuilder {
@@ -26,6 +29,8 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
     @Autowired
     private CorpusBuilderInfoDao corpusBuilderInfoDao;
+
+    private ThreadPoolExecutor threadPoolExecutor;
 
     @Override
     public Corpus prepareCorpus(Query query) {
@@ -143,15 +148,21 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             log.error("CorpusBuilderImpl.prepareCorpus: Unable to write value as String", e);
         }
 
-        if (!queryString.isEmpty())
-            corpusBuilderInfoDao.insert(metadataIdentifier.getValue(), queryString, CorpusStatus.CREATED);
-
         /*
             Store service
             open archive with corpusId
             open subarchive metadata with name corpusId_metadata
             open subarchive fulltext with name corpusId_fulltext
          */
+
+//        StoreRESTClient store = new StoreRESTClient("http://localhost:8080/");
+        String archiveID = "testingArchiveId";//store.createArchive();
+//        store.createSubArchive();
+
+
+        if (!queryString.isEmpty())
+            corpusBuilderInfoDao.insert(metadataIdentifier.getValue(), queryString, CorpusStatus.CREATED, archiveID);
+
         return corpusMetadata;
     }
 
@@ -164,38 +175,17 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             corpusBuilderInfoModel.setStatus(CorpusStatus.SUBMITTED.toString());
 
             if (contentConnectors != null) {
+                threadPoolExecutor = (ThreadPoolExecutor) Executors.newFixedThreadPool(contentConnectors.size());
                 for (ContentConnector connector : contentConnectors) {
-                    new Thread(() -> {
-                        System.out.println("Fetching metadata from " + connector.getSourceName());
-//                        InputStream inputStream = connector.fetchMetadata(query);
-//                        String line;
-//                        BufferedReader br = new BufferedReader(new InputStreamReader(inputStream));
-//                        try {
-//                            while ((line = br.readLine()) != null) {
-//                                System.out.println(line);
-//                            }
-//                        } catch (IOException e) {
-//                            e.printStackTrace();
-//                        }
-//                        finally {
-//                            try {
-//                                br.close();
-//                            } catch (IOException e) {
-//                                e.printStackTrace();
-//                            }
-//                        }
 
-                        /*
-                        InputStream fetches metadata
-                        for each metadata
-                            store metadata to metadata subarchive with name documentId.xml
-                            call downloadFullText by the documentId
-                            for each fulltext result
-                                store each result to fulltext subarchive with name $documentId
-                         */
-                    }).start();
+                    FetchMetadataTask task = new FetchMetadataTask(connector, query);
+                    log.info("A new task has been added : " + connector.getSourceName());
+                    threadPoolExecutor.execute(task);
                 }
-                corpusBuilderInfoDao.updateStatus(corpusBuilderInfoModel.getId(), CorpusStatus.SUBMITTED);
+
+                System.out.println("Maximum threads inside pool " + threadPoolExecutor.getMaximumPoolSize());
+                threadPoolExecutor.shutdown();
+                corpusBuilderInfoDao.update(corpusBuilderInfoModel.getId(), "status", CorpusStatus.SUBMITTED);
                 corpusBuilderInfoModel = corpusBuilderInfoDao.find(corpusBuilderInfoModel.getId());
                 System.out.println(corpusBuilderInfoModel);
             }
@@ -222,7 +212,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
     public void cancelProcess(String s) {
 
         try {
-            corpusBuilderInfoDao.updateStatus(s, CorpusStatus.CANCELED);
+            corpusBuilderInfoDao.update(s, "status", CorpusStatus.CANCELED);
             log.info(corpusBuilderInfoDao.find(s));
         } catch (Exception e) {
             log.error("CorpusBuilderImpl.cancelProcess", e);
@@ -233,7 +223,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
     public void deleteCorpus(String s) {
 
         try {
-            corpusBuilderInfoDao.updateStatus(s, CorpusStatus.DELETED);
+            corpusBuilderInfoDao.update(s, "status", CorpusStatus.DELETED);
             log.info(corpusBuilderInfoDao.find(s));
         } catch (Exception e) {
             log.error("CorpusBuilderImpl.cancelProcess", e);
