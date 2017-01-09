@@ -22,6 +22,12 @@ public class ContentServiceImpl implements ContentService {
 
     @Override
     public SearchResult search(Query query) {
+
+        if (query == null) {query = new Query("*:*", new HashMap<>(), new ArrayList<>(), 0, 10);}
+        else if (query.getKeyword() == null || query.getKeyword().isEmpty()) {
+            query.setKeyword("*:*");
+        }
+
         SearchResult result = new SearchResult();
         Facet sourceFacet = new Facet();
 
