@@ -1,5 +1,6 @@
 package eu.openminted.content.service;
 
+import com.google.common.collect.Lists;
 import eu.openminted.content.connector.ContentConnector;
 import eu.openminted.content.connector.Query;
 import eu.openminted.content.connector.SearchResult;
@@ -23,8 +24,9 @@ public class ContentServiceImpl implements ContentService {
     @Override
     public SearchResult search(Query query) {
 
-        if (query == null) {query = new Query("*:*", new HashMap<>(), new ArrayList<>(), 0, 10);}
-        else if (query.getKeyword() == null || query.getKeyword().isEmpty()) {
+        if (query == null) {
+            query = new Query("*:*", new HashMap<>(), new ArrayList<>(), 0, 10);
+        } else if (query.getKeyword() == null || query.getKeyword().isEmpty()) {
             query.setKeyword("*:*");
         }
 
@@ -46,7 +48,7 @@ public class ContentServiceImpl implements ContentService {
         sourceFacet.setValues(new ArrayList<>());
 
         if (contentConnectors != null) {
-            for (ContentConnector connector:contentConnectors) {
+            for (ContentConnector connector : contentConnectors) {
                 SearchResult res = connector.search(query);
                 Value value = new Value();
 
@@ -84,21 +86,34 @@ public class ContentServiceImpl implements ContentService {
         return mergeFacets(
                 f1.stream().collect(Collectors.toMap(f -> f.getField(), f -> f)),
                 f2.stream().collect(Collectors.toMap(f -> f.getField(), f -> f))).
-                    values().stream().collect(Collectors.toList());
+                values().stream().collect(Collectors.toList());
     }
 
     private Map<String, Facet> mergeFacets(Map<String, Facet> f1, Map<String, Facet> f2) {
         Map<String, Facet> temp = new HashMap<>();
 
-        for (Map.Entry<String, Facet> e:f1.entrySet()) {
-            temp.put(e.getKey(), e.getValue());
+        for (Map.Entry<String, Facet> e : f1.entrySet()) {
+            if (e.getKey().equalsIgnoreCase("publicationyear")) {
+                temp.put(e.getKey(), getPublicationYearFacet(e.getValue()));
+            } else
+                temp.put(e.getKey(), e.getValue());
         }
 
-        for (Map.Entry<String, Facet> e:f2.entrySet()) {
-            if (temp.containsKey(e.getKey()))
-                temp.put(e.getKey(), mergeFacet(temp.get(e.getKey()), e.getValue()));
-            else
-                temp.put(e.getKey(), e.getValue());
+        for (Map.Entry<String, Facet> e : f2.entrySet()) {
+            Facet facet;
+
+            if (e.getKey().equalsIgnoreCase("publicationyear")) {
+                facet = getPublicationYearFacet(e.getValue());
+            }
+            else {
+                facet = e.getValue();
+            }
+
+            if (temp.containsKey(e.getKey())) {
+                temp.put(e.getKey(), mergeFacet(temp.get(e.getKey()), facet));
+            } else {
+                temp.put(e.getKey(), facet);
+            }
         }
 
         return temp;
@@ -112,16 +127,16 @@ public class ContentServiceImpl implements ContentService {
         f.setLabel(f1.getLabel());
         f.setValues(new ArrayList<>());
 
-        for (Value v:f1.getValues())
+        for (Value v : f1.getValues())
             temp.put(v.getValue(), v.getCount());
 
-        for (Value v:f2.getValues())
+        for (Value v : f2.getValues())
             if (temp.containsKey(v.getValue()))
                 temp.put(v.getValue(), v.getCount() + temp.get(v.getValue()));
             else
                 temp.put(v.getValue(), v.getCount());
 
-        for (Map.Entry<String, Integer> e:temp.entrySet()) {
+        for (Map.Entry<String, Integer> e : temp.entrySet()) {
             Value v = new Value();
 
             v.setValue(e.getKey());
@@ -149,5 +164,45 @@ public class ContentServiceImpl implements ContentService {
             if (item.equalsIgnoreCase(keyword)) return true;
         }
         return false;
+    }
+
+    public Facet getPublicationYearFacet(Facet publicationYearFacet) {
+        Facet facet = new Facet();
+        facet.setField(publicationYearFacet.getField());
+        facet.setLabel(publicationYearFacet.getLabel());
+        facet.setValues(mergeValues(publicationYearFacet));
+        return facet;
+    }
+
+    public List<Value> mergeValues(Facet facet) {
+        Map<String, Value> tmpValues = new HashMap<>();
+
+        for (Value value : facet.getValues()) {
+            Value tmpValue = new Value();
+            tmpValue.setCount(value.getCount());
+            tmpValue.setValue(value.getValue().substring(0, 4));
+
+            if (tmpValues.containsKey(tmpValue.getValue())) {
+                int currentCount = tmpValues.get(tmpValue.getValue()).getCount();
+                tmpValues.get(tmpValue.getValue()).setCount(currentCount + tmpValue.getCount());
+            } else {
+                tmpValues.put(tmpValue.getValue(), tmpValue);
+            }
+        }
+
+        List<Value> values = Lists.newArrayList(tmpValues.values());
+        Collections.sort(values);
+        Collections.reverse(values);
+        return values;
+    }
+
+    public void printFacet(Facet facet) {
+        System.out.println("field:" + facet.getField());
+        System.out.println("values:[");
+        for (Value value : facet.getValues()) {
+            System.out.println(value.getValue());
+            System.out.println(value.getCount());
+        }
+        System.out.println("]");
     }
 }
