@@ -13,7 +13,7 @@ import java.util.*;
 /**
  * Created by antleb on 11/16/16.
  */
-@Component
+//@Component
 public class MockCoreConnector implements ContentConnector {
     @Override
     public SearchResult search(Query query) {
