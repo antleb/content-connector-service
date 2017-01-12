@@ -15,6 +15,7 @@ import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -31,7 +32,11 @@ public class CorpusBuilderImpl implements CorpusBuilder {
     @Autowired
     private CorpusBuilderInfoDao corpusBuilderInfoDao;
 
+    @Autowired
     private ThreadPoolExecutor threadPoolExecutor;
+
+    @Autowired
+    private StoreRESTClient storeRESTClient;
 
     @Override
     public Corpus prepareCorpus(Query query) {
@@ -156,8 +161,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             open subarchive fulltext with name corpusId_fulltext
          */
 
-        StoreRESTClient store = new StoreRESTClient("http://localhost:8080/");
-        String archiveID = store.createArchive();
+        String archiveID = storeRESTClient.createArchive();
 
         if (!queryString.isEmpty())
             corpusBuilderInfoDao.insert(metadataIdentifier.getValue(), queryString, CorpusStatus.CREATED, archiveID);
@@ -172,18 +176,20 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             System.out.println(corpusBuilderInfoModel);
             Query query = new ObjectMapper().readValue(corpusBuilderInfoModel.getQuery(), Query.class);
             corpusBuilderInfoModel.setStatus(CorpusStatus.SUBMITTED.toString());
+            File archive = new File("/Users/constantine/" + corpusBuilderInfoModel.getArchiveId());
+            archive.mkdirs();
 
             if (contentConnectors != null) {
-                threadPoolExecutor = (ThreadPoolExecutor) Executors.newFixedThreadPool(contentConnectors.size());
+//                threadPoolExecutor = (ThreadPoolExecutor) Executors.newFixedThreadPool(contentConnectors.size());
                 for (ContentConnector connector : contentConnectors) {
 
-                    FetchMetadataTask task = new FetchMetadataTask(connector, query);
+                    FetchMetadataTask task = new FetchMetadataTask(storeRESTClient, connector, query, corpusBuilderInfoModel.getArchiveId());
                     log.info("A new task has been added : " + connector.getSourceName());
                     threadPoolExecutor.execute(task);
                 }
 
                 System.out.println("Maximum threads inside pool " + threadPoolExecutor.getMaximumPoolSize());
-                threadPoolExecutor.shutdown();
+
                 corpusBuilderInfoDao.update(corpusBuilderInfoModel.getId(), "status", CorpusStatus.SUBMITTED);
                 corpusBuilderInfoModel = corpusBuilderInfoDao.find(corpusBuilderInfoModel.getId());
                 System.out.println(corpusBuilderInfoModel);
