@@ -87,9 +87,11 @@ public class ContentServiceImpl implements ContentService {
                     f1.stream().collect(Collectors.toMap(f -> f.getField(), f -> f)),
                     f2.stream().collect(Collectors.toMap(f -> f.getField(), f -> f))).
                     values().stream().collect(Collectors.toList());
-        else if (f1 == null && f2 != null) return f2;
-        else if (f2 == null && f1 != null) return f1;
-        else return new ArrayList<>();
+
+        if (f1 == null && f2 == null) return new ArrayList<>();
+
+        if (f1 == null) return f2;
+        else return f1;
     }
 
     private Map<String, Facet> mergeFacets(Map<String, Facet> f1, Map<String, Facet> f2) {
