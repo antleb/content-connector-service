@@ -59,7 +59,6 @@ public class MetadataDefaultHandler extends DefaultHandler {
         try {
             outputStream.flush();
             IOUtils.closeQuietly(outputStream);
-            IOUtils.closeQuietly(inputStream);
             storeRESTClient.updload(file, archiveId, metadataRecordIdentifier + ".xml");
         } catch (IOException e) {
             e.printStackTrace();
