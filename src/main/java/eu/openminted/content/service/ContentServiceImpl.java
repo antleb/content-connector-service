@@ -82,11 +82,14 @@ public class ContentServiceImpl implements ContentService {
 
     private List<Facet> mergeFacets(List<Facet> f1, List<Facet> f2) {
 //        Map<String, Facet> mf1 = new HashMap<>();
-
-        return mergeFacets(
-                f1.stream().collect(Collectors.toMap(f -> f.getField(), f -> f)),
-                f2.stream().collect(Collectors.toMap(f -> f.getField(), f -> f))).
-                values().stream().collect(Collectors.toList());
+        if (f1 != null && f2 != null)
+            return mergeFacets(
+                    f1.stream().collect(Collectors.toMap(f -> f.getField(), f -> f)),
+                    f2.stream().collect(Collectors.toMap(f -> f.getField(), f -> f))).
+                    values().stream().collect(Collectors.toList());
+        else if (f1 == null && f2 != null) return f2;
+        else if (f2 == null && f1 != null) return f1;
+        else return new ArrayList<>();
     }
 
     private Map<String, Facet> mergeFacets(Map<String, Facet> f1, Map<String, Facet> f2) {
@@ -104,8 +107,7 @@ public class ContentServiceImpl implements ContentService {
 
             if (e.getKey().equalsIgnoreCase("publicationyear")) {
                 facet = getPublicationYearFacet(e.getValue());
-            }
-            else {
+            } else {
                 facet = e.getValue();
             }
 
