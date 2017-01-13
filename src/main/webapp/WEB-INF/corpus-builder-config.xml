@@ -26,4 +26,10 @@
 	<bean id="storeRESTClient" class="eu.openminted.store.restclient.StoreRESTClient">
 		<constructor-arg index="0" type="String" value="http://localhost:8090/"/>
 	</bean>
+
+	<bean id="placeholderConfig" class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+		<property name="location">
+			<value>/WEB-INF/application.properties</value>
+		</property>
+	</bean>
 </beans>

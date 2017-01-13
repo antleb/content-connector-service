@@ -25,13 +25,12 @@ public class MetadataDefaultHandler extends DefaultHandler {
     InputStream inputStream;
     StoreRESTClient storeRESTClient;
 
-    public MetadataDefaultHandler(String archiveId, String connectorName, InputStream inputStream, StoreRESTClient storeRESTClient) {
+    public MetadataDefaultHandler(String archiveId, String connectorName, StoreRESTClient storeRESTClient) {
         try {
             this.archiveId = archiveId;
             this.connectorName = connectorName;
-            this.inputStream = inputStream;
             this.storeRESTClient = storeRESTClient;
-            file = new File("/Users/constantine/" + archiveId + "/" + connectorName + ".xml");
+            file = new File("/Users/constantine/" + archiveId + "/tmp.xml");
 
             file.createNewFile();
         } catch (IOException e) {

@@ -15,11 +15,9 @@ import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
 @Component
@@ -37,6 +35,9 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
     @Autowired
     private StoreRESTClient storeRESTClient;
+
+    @org.springframework.beans.factory.annotation.Value("${tempArchivalPath}")
+    private String tempArchivalPath;
 
     @Override
     public Corpus prepareCorpus(Query query) {
@@ -154,45 +155,30 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             log.error("CorpusBuilderImpl.prepareCorpus: Unable to write value as String", e);
         }
 
-        /*
-            Store service
-            open archive with corpusId
-            open subarchive metadata with name corpusId_metadata
-            open subarchive fulltext with name corpusId_fulltext
-         */
 
-        String archiveID = storeRESTClient.createArchive();
-
-        if (!queryString.isEmpty())
+        if (!queryString.isEmpty()) {
+            String archiveID = storeRESTClient.createArchive();
             corpusBuilderInfoDao.insert(metadataIdentifier.getValue(), queryString, CorpusStatus.CREATED, archiveID);
+        }
 
         return corpusMetadata;
     }
 
     @Override
     public void buildCorpus(Corpus corpusMetadata) {
+
         try {
             CorpusBuilderInfoModel corpusBuilderInfoModel = corpusBuilderInfoDao.find(corpusMetadata.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue());
             System.out.println(corpusBuilderInfoModel);
             Query query = new ObjectMapper().readValue(corpusBuilderInfoModel.getQuery(), Query.class);
             corpusBuilderInfoModel.setStatus(CorpusStatus.SUBMITTED.toString());
-            File archive = new File("/Users/constantine/" + corpusBuilderInfoModel.getArchiveId());
-            archive.mkdirs();
 
             if (contentConnectors != null) {
-//                threadPoolExecutor = (ThreadPoolExecutor) Executors.newFixedThreadPool(contentConnectors.size());
                 for (ContentConnector connector : contentConnectors) {
-
-                    FetchMetadataTask task = new FetchMetadataTask(storeRESTClient, connector, query, corpusBuilderInfoModel.getArchiveId());
-                    log.info("A new task has been added : " + connector.getSourceName());
+                    FetchMetadataTask task = new FetchMetadataTask(storeRESTClient, connector, query, tempArchivalPath, corpusBuilderInfoModel.getArchiveId());
                     threadPoolExecutor.execute(task);
                 }
-
-                System.out.println("Maximum threads inside pool " + threadPoolExecutor.getMaximumPoolSize());
-
                 corpusBuilderInfoDao.update(corpusBuilderInfoModel.getId(), "status", CorpusStatus.SUBMITTED);
-                corpusBuilderInfoModel = corpusBuilderInfoDao.find(corpusBuilderInfoModel.getId());
-                System.out.println(corpusBuilderInfoModel);
             }
         } catch (Exception ex) {
             log.error("CorpusBuilderImpl.buildCorpus", ex);
