@@ -4,9 +4,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import eu.openminted.content.connector.*;
 import eu.openminted.content.service.dao.CorpusBuilderInfoDao;
-import eu.openminted.content.service.extensions.FetchMetadataTask;
 import eu.openminted.content.service.extensions.SearchResultExtension;
 import eu.openminted.content.service.model.CorpusBuilderInfoModel;
+import eu.openminted.content.service.tasks.FetchMetadataTask;
 import eu.openminted.corpus.CorpusBuilder;
 import eu.openminted.corpus.CorpusStatus;
 import eu.openminted.registry.domain.*;
@@ -120,7 +120,6 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             // licence
             if (facet.getField().equalsIgnoreCase("licence")) {
                 for (Value value : facet.getValues()) {
-                    System.out.println(value.getValue() + " : " + value.getCount());
                     if (value.getCount() > 0) {
                         DatasetDistributionInfo datasetDistributionInfo = new DatasetDistributionInfo();
                         RightsInfo rightsInfo = new RightsInfo();
@@ -150,7 +149,6 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
         try {
             queryString = new ObjectMapper().writeValueAsString(query);
-            log.info(queryString);
         } catch (JsonProcessingException e) {
             log.error("CorpusBuilderImpl.prepareCorpus: Unable to write value as String", e);
         }
@@ -158,6 +156,8 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
         if (!queryString.isEmpty()) {
             String archiveID = storeRESTClient.createArchive();
+            storeRESTClient.createSubArchive(archiveID, "metadata");
+            storeRESTClient.createSubArchive(archiveID, "documents");
             corpusBuilderInfoDao.insert(metadataIdentifier.getValue(), queryString, CorpusStatus.CREATED, archiveID);
         }
 
