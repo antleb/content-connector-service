@@ -32,6 +32,12 @@
             <groupId>eu.openminted</groupId>
             <artifactId>omtd-store-rest-client</artifactId>
             <version>[0.0.1-SNAPSHOT, )</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>log4j-over-slf4j</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>log4j</groupId>
