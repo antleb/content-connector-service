@@ -36,8 +36,8 @@ public class CorpusBuilderImpl implements CorpusBuilder {
     @Autowired
     private StoreRESTClient storeRESTClient;
 
-    @org.springframework.beans.factory.annotation.Value("${tempArchivalPath}")
-    private String tempArchivalPath;
+    @org.springframework.beans.factory.annotation.Value("${tempDirectoryPath}")
+    private String tempDirectoryPath;
 
     @Override
     public Corpus prepareCorpus(Query query) {
@@ -175,7 +175,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
             if (contentConnectors != null) {
                 for (ContentConnector connector : contentConnectors) {
-                    FetchMetadataTask task = new FetchMetadataTask(storeRESTClient, connector, query, tempArchivalPath, corpusBuilderInfoModel.getArchiveId());
+                    FetchMetadataTask task = new FetchMetadataTask(storeRESTClient, connector, query, tempDirectoryPath, corpusBuilderInfoModel.getArchiveId());
                     threadPoolExecutor.execute(task);
                 }
                 corpusBuilderInfoDao.update(corpusBuilderInfoModel.getId(), "status", CorpusStatus.SUBMITTED);

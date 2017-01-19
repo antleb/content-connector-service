@@ -29,22 +29,22 @@ public class FetchMetadataTask implements Runnable {
     private Query query;
     private String archiveId;
     private StoreRESTClient storeRESTClient;
-    private String tempArchivalPath;
+    private String tempDirectoryPath;
 
-    public FetchMetadataTask(StoreRESTClient storeRESTClient, ContentConnector connector, Query query, String tempArchivalPath, String archiveId) {
+    public FetchMetadataTask(StoreRESTClient storeRESTClient, ContentConnector connector, Query query, String tempDirectoryPath, String archiveId) {
         this.connector = connector;
         this.query = query;
         this.archiveId = archiveId;
         this.storeRESTClient = storeRESTClient;
-        this.tempArchivalPath = tempArchivalPath;
+        this.tempDirectoryPath = tempDirectoryPath;
     }
 
     @Override
     public void run() {
         InputStream inputStream = null;
-        tempArchivalPath = tempArchivalPath.replaceAll("/$", "");
+        tempDirectoryPath = tempDirectoryPath.replaceAll("/$", "");
 
-        File archive = new File(tempArchivalPath + "/" + connector.getSourceName());
+        File archive = new File(tempDirectoryPath + "/" + connector.getSourceName());
         if (archive.mkdirs()) log.debug("Creating " + connector.getSourceName() + " directory");
         File metadataFile = new File(archive.getPath() + "/" + archiveId + ".xml");
         File downloadFile = new File(archive.getPath() + "/" + archiveId + ".pdf");
