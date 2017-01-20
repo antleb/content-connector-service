@@ -15,10 +15,8 @@ import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
+import java.util.concurrent.Future;
 import java.util.concurrent.ThreadPoolExecutor;
 
 @Component
@@ -177,7 +175,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             corpusInfo.setDistributionInfos(distributionInfos);
             storeRESTClient.createSubArchive(archiveID, "metadata");
             storeRESTClient.createSubArchive(archiveID, "documents");
-            corpusBuilderInfoDao.insert(metadataIdentifier.getValue(), queryString, CorpusStatus.CREATED, archiveID);
+            corpusBuilderInfoDao.insert(metadataIdentifier.getValue(), queryString, CorpusStatus.SUBMITTED, archiveID);
         }
 
         return corpusMetadata;
@@ -188,16 +186,24 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
         try {
             CorpusBuilderInfoModel corpusBuilderInfoModel = corpusBuilderInfoDao.find(corpusMetadata.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue());
-            System.out.println(corpusBuilderInfoModel);
-            Query query = new ObjectMapper().readValue(corpusBuilderInfoModel.getQuery(), Query.class);
-            corpusBuilderInfoModel.setStatus(CorpusStatus.SUBMITTED.toString());
+            Collection<Future<?>> futures = new ArrayList<>();
 
+            Query query = new ObjectMapper().readValue(corpusBuilderInfoModel.getQuery(), Query.class);
             if (contentConnectors != null) {
+
                 for (ContentConnector connector : contentConnectors) {
                     FetchMetadataTask task = new FetchMetadataTask(storeRESTClient, connector, query, tempDirectoryPath, corpusBuilderInfoModel.getArchiveId());
-                    threadPoolExecutor.execute(task);
+                    futures.add(threadPoolExecutor.submit(task));
                 }
-                corpusBuilderInfoDao.update(corpusBuilderInfoModel.getId(), "status", CorpusStatus.SUBMITTED);
+                corpusBuilderInfoModel.setStatus(CorpusStatus.PROCESSING.toString());
+                corpusBuilderInfoDao.update(corpusBuilderInfoModel.getId(), "status", CorpusStatus.PROCESSING);
+                for (Future<?> future:futures) {
+                    future.get();
+                }
+                corpusBuilderInfoModel.setStatus(CorpusStatus.CREATED.toString());
+                corpusBuilderInfoDao.update(corpusBuilderInfoModel.getId(), "status", CorpusStatus.CREATED);
+
+                //TODO: Email to user when corpus is ready which will include the landing page for the corpus
             }
         } catch (Exception ex) {
             log.error("CorpusBuilderImpl.buildCorpus", ex);

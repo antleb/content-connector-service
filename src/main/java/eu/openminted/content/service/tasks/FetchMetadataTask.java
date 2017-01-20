@@ -92,6 +92,11 @@ public class FetchMetadataTask implements Runnable {
                 } catch (XPathExpressionException e) {
                     log.error("FetchMetadataTask.run- Fetching Metadata -XPathExpressionException ", e);
                 }
+
+                if (identifiers.size() >= 1000) {
+                    IOUtils.closeQuietly(inputStream);
+                    break;
+                }
             }
 
             IOUtils.closeQuietly(inputStream);
