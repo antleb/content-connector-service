@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -44,6 +45,13 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
     @Override
     public Corpus prepareCorpus(Query query) {
+
+        if (query == null) {
+            query = new Query("*:*", new HashMap<>(), new ArrayList<>(), 0, 10);
+        } else if (query.getKeyword() == null || query.getKeyword().isEmpty()) {
+            query.setKeyword("*:*");
+        }
+
         Corpus corpusMetadata = new Corpus();
         String queryString = "";
         Query tempQuery = new Query(query.getKeyword(), query.getParams(), new ArrayList<>(), 0, 1);
@@ -169,7 +177,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             corpusInfo.setDistributionInfos(distributionInfos);
             storeRESTClient.createSubArchive(archiveID, "metadata");
             storeRESTClient.createSubArchive(archiveID, "documents");
-            corpusBuilderInfoDao.insert(metadataIdentifier.getValue(), queryString, CorpusStatus.CREATED, archiveID);
+            corpusBuilderInfoDao.insert(metadataIdentifier.getValue(), queryString, CorpusStatus.SUBMITTED, archiveID);
         }
 
         return corpusMetadata;
@@ -189,7 +197,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                     FetchMetadataTask task = new FetchMetadataTask(storeRESTClient, connector, query, tempDirectoryPath, corpusBuilderInfoModel.getArchiveId());
                     threadPoolExecutor.execute(task);
                 }
-                corpusBuilderInfoDao.update(corpusBuilderInfoModel.getId(), "status", CorpusStatus.SUBMITTED);
+                corpusBuilderInfoDao.update(corpusBuilderInfoModel.getId(), "status", CorpusStatus.BUILDING);
             }
         } catch (Exception ex) {
             log.error("CorpusBuilderImpl.buildCorpus", ex);
