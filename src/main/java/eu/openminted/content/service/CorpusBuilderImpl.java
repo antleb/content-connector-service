@@ -177,7 +177,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             corpusInfo.setDistributionInfos(distributionInfos);
             storeRESTClient.createSubArchive(archiveID, "metadata");
             storeRESTClient.createSubArchive(archiveID, "documents");
-            corpusBuilderInfoDao.insert(metadataIdentifier.getValue(), queryString, CorpusStatus.SUBMITTED, archiveID);
+            corpusBuilderInfoDao.insert(metadataIdentifier.getValue(), queryString, CorpusStatus.CREATED, archiveID);
         }
 
         return corpusMetadata;
@@ -197,7 +197,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                     FetchMetadataTask task = new FetchMetadataTask(storeRESTClient, connector, query, tempDirectoryPath, corpusBuilderInfoModel.getArchiveId());
                     threadPoolExecutor.execute(task);
                 }
-                corpusBuilderInfoDao.update(corpusBuilderInfoModel.getId(), "status", CorpusStatus.BUILDING);
+                corpusBuilderInfoDao.update(corpusBuilderInfoModel.getId(), "status", CorpusStatus.SUBMITTED);
             }
         } catch (Exception ex) {
             log.error("CorpusBuilderImpl.buildCorpus", ex);
