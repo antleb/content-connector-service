@@ -39,6 +39,12 @@ public class CorpusBuilderImpl implements CorpusBuilder {
     @org.springframework.beans.factory.annotation.Value("${tempDirectoryPath}")
     private String tempDirectoryPath;
 
+    @org.springframework.beans.factory.annotation.Value("${storeServiceAddress}")
+    private String storeServiceAddress;
+
+    @org.springframework.beans.factory.annotation.Value("${storageRoot}")
+    private String storageRoot;
+
     @Override
     public Corpus prepareCorpus(Query query) {
         Corpus corpusMetadata = new Corpus();
@@ -153,9 +159,19 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             log.error("CorpusBuilderImpl.prepareCorpus: Unable to write value as String", e);
         }
 
-
         if (!queryString.isEmpty()) {
             String archiveID = storeRESTClient.createArchive();
+            DatasetDistributionInfo datasetDistributionInfo = new DatasetDistributionInfo();
+            List<String> dowloadaURLs = new ArrayList<>();
+            List<DatasetDistributionInfo> distributionInfos = new ArrayList<>();
+
+            String archiveDownloadingInfo = archiveID + ", " + storageRoot + archiveID + ".zip";
+
+            dowloadaURLs.add(archiveDownloadingInfo);
+            datasetDistributionInfo.setDownloadURLs(dowloadaURLs);
+
+            distributionInfos.add(datasetDistributionInfo);
+            corpusInfo.setDistributionInfos(distributionInfos);
             storeRESTClient.createSubArchive(archiveID, "metadata");
             storeRESTClient.createSubArchive(archiveID, "documents");
             corpusBuilderInfoDao.insert(metadataIdentifier.getValue(), queryString, CorpusStatus.CREATED, archiveID);

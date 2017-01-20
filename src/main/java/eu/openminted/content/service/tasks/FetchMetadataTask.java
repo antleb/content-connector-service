@@ -114,6 +114,8 @@ public class FetchMetadataTask implements Runnable {
                     log.error("FetchMetadataTask.run- Downloading document -IOException ", e);
                 }
             }
+
+            storeRESTClient.finalizeArchive(archiveId);
         }
 
 
