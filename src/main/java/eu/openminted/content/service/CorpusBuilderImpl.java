@@ -42,9 +42,6 @@ public class CorpusBuilderImpl implements CorpusBuilder {
     @org.springframework.beans.factory.annotation.Value("${storeServiceAddress}")
     private String storeServiceAddress;
 
-    @org.springframework.beans.factory.annotation.Value("${storageRoot}")
-    private String storageRoot;
-
     @Override
     public Corpus prepareCorpus(Query query) {
         Corpus corpusMetadata = new Corpus();
@@ -165,9 +162,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             List<String> dowloadaURLs = new ArrayList<>();
             List<DatasetDistributionInfo> distributionInfos = new ArrayList<>();
 
-            String archiveDownloadingInfo = archiveID + ", " + storageRoot + archiveID + ".zip";
-
-            dowloadaURLs.add(archiveDownloadingInfo);
+            dowloadaURLs.add(archiveID);
             datasetDistributionInfo.setDownloadURLs(dowloadaURLs);
 
             distributionInfos.add(datasetDistributionInfo);
