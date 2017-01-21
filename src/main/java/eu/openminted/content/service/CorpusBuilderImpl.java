@@ -103,8 +103,6 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         String modernGreek = "Greek, Modern (1453-)";
 
         for (Facet facet : result.getFacets()) {
-            System.out.println(facet.getField());
-
             // language
             if (facet.getField().equalsIgnoreCase("documentLanguage")) {
                 for (Value value : facet.getValues()) {
