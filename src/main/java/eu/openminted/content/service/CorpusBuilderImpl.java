@@ -195,8 +195,9 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         if (contentConnectors != null) {
 
             new Thread(() -> {
+                CorpusBuilderInfoModel corpusBuilderInfoModel = null;
                 try {
-                    CorpusBuilderInfoModel corpusBuilderInfoModel = corpusBuilderInfoDao.find(corpusMetadata.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue());
+                    corpusBuilderInfoModel = corpusBuilderInfoDao.find(corpusMetadata.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue());
 
                     Collection<Future<?>> futures = new ArrayList<>();
                     Query query = new ObjectMapper().readValue(corpusBuilderInfoModel.getQuery(), Query.class);
@@ -218,6 +219,10 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                     //TODO: Email to user when corpus is ready which will include the landing page for the corpus
                 } catch (Exception ex) {
                     log.error("CorpusBuilderImpl.buildCorpus", ex);
+                    if (corpusBuilderInfoModel != null) {
+                        corpusBuilderInfoModel.setStatus(CorpusStatus.CANCELED.toString());
+                        corpusBuilderInfoDao.update(corpusBuilderInfoModel.getId(), "status", CorpusStatus.CANCELED);
+                    }
                 }
             }).start();
         }
