@@ -173,7 +173,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             List<DatasetDistributionInfo> distributionInfos = new ArrayList<>();
             List<DistributionMediumEnum> distributionMediums = new ArrayList<>();
 
-            dowloadaURLs.add(connectorServiceHost + "/omtd-registry/resources/corpus/download?archiveId=" +archiveID);
+            dowloadaURLs.add(connectorServiceHost + "/omtd-registry/request/corpus/download?archiveId=" +archiveID);
             distributionMediums.add(DistributionMediumEnum.DOWNLOADABLE);
 
             datasetDistributionInfo.setDownloadURLs(dowloadaURLs);
