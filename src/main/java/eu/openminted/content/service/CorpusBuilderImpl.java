@@ -173,7 +173,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             List<DatasetDistributionInfo> distributionInfos = new ArrayList<>();
             List<DistributionMediumEnum> distributionMediums = new ArrayList<>();
 
-            dowloadaURLs.add(connectorServiceHost + "/omtd-registry/request/corpus/download?archiveId=" +archiveID);
+            dowloadaURLs.add(connectorServiceHost + "/omtd-registry/request/corpus/download?archiveId=" + archiveID);
             distributionMediums.add(DistributionMediumEnum.DOWNLOADABLE);
 
             datasetDistributionInfo.setDownloadURLs(dowloadaURLs);
@@ -192,30 +192,36 @@ public class CorpusBuilderImpl implements CorpusBuilder {
     @Override
     public void buildCorpus(Corpus corpusMetadata) {
 
-        try {
-            CorpusBuilderInfoModel corpusBuilderInfoModel = corpusBuilderInfoDao.find(corpusMetadata.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue());
-            Collection<Future<?>> futures = new ArrayList<>();
+        if (contentConnectors != null) {
 
-            Query query = new ObjectMapper().readValue(corpusBuilderInfoModel.getQuery(), Query.class);
-            if (contentConnectors != null) {
+            new Thread(() -> {
+                try {
+                    CorpusBuilderInfoModel corpusBuilderInfoModel = corpusBuilderInfoDao.find(corpusMetadata.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue());
 
-                for (ContentConnector connector : contentConnectors) {
-                    FetchMetadataTask task = new FetchMetadataTask(storeRESTClient, connector, query, tempDirectoryPath, corpusBuilderInfoModel.getArchiveId());
-                    futures.add(threadPoolExecutor.submit(task));
+                    Collection<Future<?>> futures = new ArrayList<>();
+                    Query query = new ObjectMapper().readValue(corpusBuilderInfoModel.getQuery(), Query.class);
+
+
+                    for (ContentConnector connector : contentConnectors) {
+                        FetchMetadataTask task = new FetchMetadataTask(storeRESTClient, connector, query, tempDirectoryPath, corpusBuilderInfoModel.getArchiveId());
+                        futures.add(threadPoolExecutor.submit(task));
+                    }
+                    corpusBuilderInfoModel.setStatus(CorpusStatus.PROCESSING.toString());
+                    corpusBuilderInfoDao.update(corpusBuilderInfoModel.getId(), "status", CorpusStatus.PROCESSING);
+                    for (Future<?> future : futures) {
+                        future.get();
+                    }
+                    corpusBuilderInfoModel.setStatus(CorpusStatus.CREATED.toString());
+                    corpusBuilderInfoDao.update(corpusBuilderInfoModel.getId(), "status", CorpusStatus.CREATED);
+
+
+                    //TODO: Email to user when corpus is ready which will include the landing page for the corpus
+                } catch (Exception ex) {
+                    log.error("CorpusBuilderImpl.buildCorpus", ex);
                 }
-                corpusBuilderInfoModel.setStatus(CorpusStatus.PROCESSING.toString());
-                corpusBuilderInfoDao.update(corpusBuilderInfoModel.getId(), "status", CorpusStatus.PROCESSING);
-                for (Future<?> future:futures) {
-                    future.get();
-                }
-                corpusBuilderInfoModel.setStatus(CorpusStatus.CREATED.toString());
-                corpusBuilderInfoDao.update(corpusBuilderInfoModel.getId(), "status", CorpusStatus.CREATED);
-
-                //TODO: Email to user when corpus is ready which will include the landing page for the corpus
-            }
-        } catch (Exception ex) {
-            log.error("CorpusBuilderImpl.buildCorpus", ex);
+            }).start();
         }
+
     }
 
     @Override
