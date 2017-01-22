@@ -41,6 +41,9 @@ public class CorpusBuilderImpl implements CorpusBuilder {
     @org.springframework.beans.factory.annotation.Value("${storeServiceAddress}")
     private String storeServiceAddress;
 
+    @org.springframework.beans.factory.annotation.Value("${connectorServiceHost}")
+    private String connectorServiceHost;
+
     @Override
     public Corpus prepareCorpus(Query query) {
 
@@ -49,6 +52,9 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         } else if (query.getKeyword() == null || query.getKeyword().isEmpty()) {
             query.setKeyword("*:*");
         }
+
+        // if connectorServiceHost ends with '/' remove it
+        connectorServiceHost = connectorServiceHost.replaceAll("/$", "");
 
         Corpus corpusMetadata = new Corpus();
         String queryString = "";
@@ -167,7 +173,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             List<DatasetDistributionInfo> distributionInfos = new ArrayList<>();
             List<DistributionMediumEnum> distributionMediums = new ArrayList<>();
 
-            dowloadaURLs.add("http://83.212.101.85:8080/omtd-registry/resources/corpus/download?archiveId=" +archiveID);
+            dowloadaURLs.add(connectorServiceHost + "/omtd-registry/resources/corpus/download?archiveId=" +archiveID);
             distributionMediums.add(DistributionMediumEnum.DOWNLOADABLE);
 
             datasetDistributionInfo.setDownloadURLs(dowloadaURLs);
