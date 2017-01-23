@@ -14,6 +14,7 @@ import eu.openminted.store.restclient.StoreRESTClient;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
 import java.util.concurrent.Future;
@@ -38,11 +39,11 @@ public class CorpusBuilderImpl implements CorpusBuilder {
     @org.springframework.beans.factory.annotation.Value("${tempDirectoryPath}")
     private String tempDirectoryPath;
 
-    @org.springframework.beans.factory.annotation.Value("${storeServiceAddress}")
-    private String storeServiceAddress;
+    @org.springframework.beans.factory.annotation.Value("${store.host}")
+    private String storeHost;
 
-    @org.springframework.beans.factory.annotation.Value("${connectorServiceHost}")
-    private String connectorServiceHost;
+    @org.springframework.beans.factory.annotation.Value("${registry.host}")
+    private String registryHost;
 
     @Override
     public Corpus prepareCorpus(Query query) {
@@ -53,8 +54,8 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             query.setKeyword("*:*");
         }
 
-        // if connectorServiceHost ends with '/' remove it
-        connectorServiceHost = connectorServiceHost.replaceAll("/$", "");
+        // if registryHost ends with '/' remove it
+        registryHost = registryHost.replaceAll("/$", "");
 
         Corpus corpusMetadata = new Corpus();
         String queryString = "";
@@ -173,7 +174,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             List<DatasetDistributionInfo> distributionInfos = new ArrayList<>();
             List<DistributionMediumEnum> distributionMediums = new ArrayList<>();
 
-            dowloadaURLs.add(connectorServiceHost + "/omtd-registry/request/corpus/download?archiveId=" + archiveID);
+            dowloadaURLs.add(registryHost + "/omtd-registry/request/corpus/download?archiveId=" + archiveID);
             distributionMediums.add(DistributionMediumEnum.DOWNLOADABLE);
 
             datasetDistributionInfo.setDownloadURLs(dowloadaURLs);
@@ -215,7 +216,6 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                     corpusBuilderInfoModel.setStatus(CorpusStatus.CREATED.toString());
                     corpusBuilderInfoDao.update(corpusBuilderInfoModel.getId(), "status", CorpusStatus.CREATED);
 
-
                     //TODO: Email to user when corpus is ready which will include the landing page for the corpus
                 } catch (Exception ex) {
                     log.error("CorpusBuilderImpl.buildCorpus", ex);
@@ -227,6 +227,10 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             }).start();
         }
 
+        String url = registryHost + "/omtd-registry/request/corpus";
+
+        RestTemplate restTemplate = new RestTemplate();
+        restTemplate.postForObject(url, corpusMetadata, Corpus.class);
     }
 
     @Override

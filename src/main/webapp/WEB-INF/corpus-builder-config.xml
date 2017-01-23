@@ -30,6 +30,6 @@
 	</bean>
 
 	<bean id="storeRESTClient" class="eu.openminted.store.restclient.StoreRESTClient">
-		<constructor-arg index="0" type="String" value="${storeServiceAddress}"/>
+		<constructor-arg index="0" type="String" value="${store.host}"/>
 	</bean>
 </beans>
