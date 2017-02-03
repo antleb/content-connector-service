@@ -2,16 +2,23 @@ package eu.openminted.content.service.tasks;
 
 import eu.openminted.content.connector.ContentConnector;
 import eu.openminted.content.connector.Query;
+import eu.openminted.content.service.extensions.FetchMetadataHandler;
 import eu.openminted.store.restclient.StoreRESTClient;
 import org.apache.commons.io.IOUtils;
 import org.apache.log4j.Logger;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
+import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
+import org.xml.sax.XMLReader;
+import org.xml.sax.helpers.XMLFilterImpl;
+import org.xml.sax.helpers.XMLReaderFactory;
 
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.parsers.SAXParser;
+import javax.xml.parsers.SAXParserFactory;
 import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerConfigurationException;
 import javax.xml.transform.TransformerException;
@@ -43,18 +50,47 @@ public class FetchMetadataTask implements Runnable {
     public void run() {
         InputStream inputStream = null;
         tempDirectoryPath = tempDirectoryPath.replaceAll("/$", "");
+        String archivePath = tempDirectoryPath + "/" + archiveId + "/" + connector.getSourceName();
 
-        File archive = new File(tempDirectoryPath + "/" + connector.getSourceName());
-        if (archive.mkdirs()) log.debug("Creating " + connector.getSourceName() + " directory");
+
+        File archive = new File(archivePath);
+        if (archive.mkdirs()) log.debug("Creating " + archivePath + " directory");
         File metadataFile = new File(archive.getPath() + "/" + archiveId + ".xml");
         File downloadFile = new File(archive.getPath() + "/" + archiveId + ".pdf");
+        List<String> identifiers = new ArrayList<>();
 
+      //*
+        SAXParserFactory factory = SAXParserFactory.newInstance();
+        SAXParser saxParser;
+
+        try {
+
+            saxParser = factory.newSAXParser();
+            inputStream = connector.fetchMetadata(query);
+            FetchMetadataHandler handler = new FetchMetadataHandler();
+            handler.setMetadataFile(metadataFile);
+            handler.setDownloadFile(downloadFile);
+            handler.setConnector(connector);
+            handler.setStoreRESTClient(storeRESTClient);
+            handler.setArchiveId(this.archiveId);
+            handler.setIdentifiers(identifiers);
+
+            saxParser.parse(inputStream, handler);
+        } catch (SAXException e) {
+            log.error("SAXException", e);
+        } catch (IOException e) {
+            log.error("IOException", e);
+        } catch (ParserConfigurationException e) {
+            log.error("ParserConfigurationException", e);
+        }
+    //    */
+
+    /*
         DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
         XPath xpath = XPathFactory.newInstance().newXPath();
 
         Document currentDoc = null;
         NodeList nodes = null;
-        List<String> identifiers = new ArrayList<>();
 
         try {
             currentDoc = dbf.newDocumentBuilder().newDocument();
@@ -92,15 +128,11 @@ public class FetchMetadataTask implements Runnable {
                 } catch (XPathExpressionException e) {
                     log.error("FetchMetadataTask.run- Fetching Metadata -XPathExpressionException ", e);
                 }
-
-                if (identifiers.size() >= 1000) {
-                    IOUtils.closeQuietly(inputStream);
-                    break;
-                }
             }
 
+            // */
             IOUtils.closeQuietly(inputStream);
-
+        /*
             for (String identifier : identifiers) {
                 try {
                     InputStream fullTextInputStream = connector.downloadFullText(identifier);
@@ -119,12 +151,15 @@ public class FetchMetadataTask implements Runnable {
                     log.error("FetchMetadataTask.run- Downloading document -IOException ", e);
                 }
             }
+        */
+        //}
 
-            storeRESTClient.finalizeArchive(archiveId);
-        }
+        storeRESTClient.finalizeArchive(archiveId);
 
 
-        IOUtils.closeQuietly(inputStream);
+
+// next line shoul be commited in case of defaultHandler
+//        IOUtils.closeQuietly(inputStream);
         if (metadataFile.delete()) log.debug("Removing temp metadata file");
         if (downloadFile.delete()) log.debug("Removing temp download file");
         if (archive.delete()) log.debug("Removing temp directory");

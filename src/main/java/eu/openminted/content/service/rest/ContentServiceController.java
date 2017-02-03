@@ -42,13 +42,13 @@ public class ContentServiceController {
     public Corpus prepare(@RequestParam(value = "facets") String facets) {
 
         List<String> facetList = new ArrayList<>(Arrays.asList(facets.split(",")));
-        Query query = new Query("*:*", new HashMap<>(), facetList, 0, 10);
+        Query query = new Query("*:*", new HashMap<>(), facetList, 0, 1);
         return corpusBuilder.prepareCorpus(query);
     }
 
     @RequestMapping(value = "/corpus/prepare", method = RequestMethod.POST, headers = "Accept=application/json")
     public Corpus prepare(@RequestBody Query query) {
-
+        query.setTo(1000);
         return corpusBuilder.prepareCorpus(query);
     }
 

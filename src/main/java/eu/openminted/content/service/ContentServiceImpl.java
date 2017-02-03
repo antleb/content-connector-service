@@ -12,9 +12,6 @@ import org.springframework.stereotype.Component;
 import java.util.*;
 import java.util.stream.Collectors;
 
-/**
- * Created by antleb on 11/16/16.
- */
 @Component
 public class ContentServiceImpl implements ContentService {
 
@@ -25,10 +22,13 @@ public class ContentServiceImpl implements ContentService {
     public SearchResult search(Query query) {
 
         if (query == null) {
-            query = new Query("*:*", new HashMap<>(), new ArrayList<>(), 0, 10);
+            query = new Query("*:*", new HashMap<>(), new ArrayList<>(), 0, 1);
         } else if (query.getKeyword() == null || query.getKeyword().isEmpty()) {
             query.setKeyword("*:*");
         }
+
+        query.setFrom(0);
+        query.setTo(1);
 
         if (query.getFacets() == null) query.setFacets(new ArrayList<>());
 
@@ -84,8 +84,8 @@ public class ContentServiceImpl implements ContentService {
 //        Map<String, Facet> mf1 = new HashMap<>();
         if (f1 != null && f2 != null)
             return mergeFacets(
-                    f1.stream().collect(Collectors.toMap(f -> f.getField(), f -> f)),
-                    f2.stream().collect(Collectors.toMap(f -> f.getField(), f -> f))).
+                    f1.stream().collect(Collectors.toMap(Facet::getField, f -> f)),
+                    f2.stream().collect(Collectors.toMap(Facet::getField, f -> f))).
                     values().stream().collect(Collectors.toList());
 
         if (f1 == null && f2 == null) return new ArrayList<>();
@@ -125,7 +125,7 @@ public class ContentServiceImpl implements ContentService {
 
     private Facet mergeFacet(Facet f1, Facet f2) {
         Facet f = new Facet();
-        Map<String, Integer> temp = new HashMap();
+        Map<String, Integer> temp = new HashMap<>();
 
         f.setField(f1.getField());
         f.setLabel(f1.getLabel());
@@ -162,7 +162,7 @@ public class ContentServiceImpl implements ContentService {
         this.contentConnectors = contentConnectors;
     }
 
-    public boolean containsIgnoreCase(List<String> list, String keyword) {
+    private boolean containsIgnoreCase(List<String> list, String keyword) {
 
         for (String item : list) {
             if (item.equalsIgnoreCase(keyword)) return true;
@@ -170,7 +170,7 @@ public class ContentServiceImpl implements ContentService {
         return false;
     }
 
-    public Facet getPublicationYearFacet(Facet publicationYearFacet) {
+    private Facet getPublicationYearFacet(Facet publicationYearFacet) {
         Facet facet = new Facet();
         facet.setField(publicationYearFacet.getField());
         facet.setLabel(publicationYearFacet.getLabel());
@@ -178,7 +178,7 @@ public class ContentServiceImpl implements ContentService {
         return facet;
     }
 
-    public List<Value> mergeValues(Facet facet) {
+    private List<Value> mergeValues(Facet facet) {
         Map<String, Value> tmpValues = new HashMap<>();
 
         for (Value value : facet.getValues()) {

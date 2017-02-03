@@ -4,23 +4,28 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import eu.openminted.content.connector.*;
 import eu.openminted.content.service.dao.CorpusBuilderInfoDao;
+import eu.openminted.content.service.extensions.CorpusBuilderExecutionQueueConsumer;
 import eu.openminted.content.service.extensions.SearchResultExtension;
 import eu.openminted.content.service.model.CorpusBuilderInfoModel;
-import eu.openminted.content.service.tasks.FetchMetadataTask;
 import eu.openminted.corpus.CorpusBuilder;
 import eu.openminted.corpus.CorpusStatus;
 import eu.openminted.registry.domain.*;
 import eu.openminted.store.restclient.StoreRESTClient;
 import org.apache.log4j.Logger;
+import org.elasticsearch.common.collect.Tuple;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.ComponentScan;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
+import javax.annotation.PostConstruct;
 import java.util.*;
-import java.util.concurrent.Future;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 
 @Component
+@ComponentScan("eu.openminted.content")
 public class CorpusBuilderImpl implements CorpusBuilder {
     private static Logger log = Logger.getLogger(CorpusBuilderImpl.class.getName());
 
@@ -31,10 +36,10 @@ public class CorpusBuilderImpl implements CorpusBuilder {
     private CorpusBuilderInfoDao corpusBuilderInfoDao;
 
     @Autowired
-    private ThreadPoolExecutor threadPoolExecutor;
+    private StoreRESTClient storeRESTClient;
 
     @Autowired
-    private StoreRESTClient storeRESTClient;
+    private CorpusBuilderExecutionQueueConsumer corpusBuilderExecutionQueueConsumer;
 
     @org.springframework.beans.factory.annotation.Value("${tempDirectoryPath}")
     private String tempDirectoryPath;
@@ -45,11 +50,26 @@ public class CorpusBuilderImpl implements CorpusBuilder {
     @org.springframework.beans.factory.annotation.Value("${registry.host}")
     private String registryHost;
 
+    private BlockingQueue<String> corpora = new LinkedBlockingQueue<>();
+
+    @PostConstruct
+    public void init() {
+        new Thread(() -> {
+            try {
+                corpusBuilderExecutionQueueConsumer.init(corpora);
+            } catch (Exception ex) {
+                log.error("Error executing queue consumer");
+            }
+        }).start();
+    }
+
     @Override
     public Corpus prepareCorpus(Query query) {
 
+        log.info("prepareCorpus");
+
         if (query == null) {
-            query = new Query("*:*", new HashMap<>(), new ArrayList<>(), 0, 10);
+            query = new Query("*:*", new HashMap<>(), new ArrayList<>(), 0, 1);
         } else if (query.getKeyword() == null || query.getKeyword().isEmpty()) {
             query.setKeyword("*:*");
         }
@@ -194,43 +214,14 @@ public class CorpusBuilderImpl implements CorpusBuilder {
     public void buildCorpus(Corpus corpusMetadata) {
 
         if (contentConnectors != null) {
+            corpora.add(corpusMetadata.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue());
+            log.info("Sending " + corpusMetadata.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue() + " to execution Queue");
 
-            new Thread(() -> {
-                CorpusBuilderInfoModel corpusBuilderInfoModel = null;
-                try {
-                    corpusBuilderInfoModel = corpusBuilderInfoDao.find(corpusMetadata.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue());
+            String url = registryHost + "/omtd-registry/request/corpus";
 
-                    Collection<Future<?>> futures = new ArrayList<>();
-                    Query query = new ObjectMapper().readValue(corpusBuilderInfoModel.getQuery(), Query.class);
-
-
-                    for (ContentConnector connector : contentConnectors) {
-                        FetchMetadataTask task = new FetchMetadataTask(storeRESTClient, connector, query, tempDirectoryPath, corpusBuilderInfoModel.getArchiveId());
-                        futures.add(threadPoolExecutor.submit(task));
-                    }
-                    corpusBuilderInfoModel.setStatus(CorpusStatus.PROCESSING.toString());
-                    corpusBuilderInfoDao.update(corpusBuilderInfoModel.getId(), "status", CorpusStatus.PROCESSING);
-                    for (Future<?> future : futures) {
-                        future.get();
-                    }
-                    corpusBuilderInfoModel.setStatus(CorpusStatus.CREATED.toString());
-                    corpusBuilderInfoDao.update(corpusBuilderInfoModel.getId(), "status", CorpusStatus.CREATED);
-
-                    //TODO: Email to user when corpus is ready which will include the landing page for the corpus
-                } catch (Exception ex) {
-                    log.error("CorpusBuilderImpl.buildCorpus", ex);
-                    if (corpusBuilderInfoModel != null) {
-                        corpusBuilderInfoModel.setStatus(CorpusStatus.CANCELED.toString());
-                        corpusBuilderInfoDao.update(corpusBuilderInfoModel.getId(), "status", CorpusStatus.CANCELED);
-                    }
-                }
-            }).start();
+            RestTemplate restTemplate = new RestTemplate();
+//            restTemplate.postForObject(url, corpusMetadata, Corpus.class);
         }
-
-        String url = registryHost + "/omtd-registry/request/corpus";
-
-        RestTemplate restTemplate = new RestTemplate();
-        restTemplate.postForObject(url, corpusMetadata, Corpus.class);
     }
 
     @Override
@@ -242,7 +233,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             corpusBuilderInfoModel = corpusBuilderInfoDao.find(s);
             return CorpusStatus.valueOf(corpusBuilderInfoModel.getStatus());
         } catch (Exception e) {
-            log.error("CorpusBuilderImpl.cancelProcess", e);
+            log.error("CorpusBuilderImpl.getStatus", e);
         }
         return null;
     }
@@ -265,7 +256,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             corpusBuilderInfoDao.update(s, "status", CorpusStatus.DELETED);
             log.info(corpusBuilderInfoDao.find(s));
         } catch (Exception e) {
-            log.error("CorpusBuilderImpl.cancelProcess", e);
+            log.error("CorpusBuilderImpl.deleteCorpus", e);
         }
     }
 
