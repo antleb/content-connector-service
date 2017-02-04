@@ -14,6 +14,7 @@ import eu.openminted.store.restclient.StoreRESTClient;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
@@ -227,10 +228,14 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             }).start();
         }
 
-        String url = registryHost + "/omtd-registry/request/corpus";
+        try {
 
-        RestTemplate restTemplate = new RestTemplate();
-        restTemplate.postForObject(url, corpusMetadata, Corpus.class);
+            String url = registryHost + "/omtd-registry/request/corpus";
+            RestTemplate restTemplate = new RestTemplate();
+            restTemplate.postForObject(url, corpusMetadata, Corpus.class);
+        } catch (HttpServerErrorException e) {
+            log.error("CorpusBuilderImpl.buildCorpus: Error posting corpus at registry", e);
+        }
     }
 
     @Override
