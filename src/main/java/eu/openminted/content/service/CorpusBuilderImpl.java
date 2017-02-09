@@ -7,6 +7,7 @@ import eu.openminted.content.service.dao.CorpusBuilderInfoDao;
 import eu.openminted.content.service.extensions.CorpusBuilderExecutionQueueConsumer;
 import eu.openminted.content.service.extensions.SearchResultExtension;
 import eu.openminted.content.service.model.CorpusBuilderInfoModel;
+import eu.openminted.content.service.tasks.FetchMetadataTask;
 import eu.openminted.corpus.CorpusBuilder;
 import eu.openminted.corpus.CorpusStatus;
 import eu.openminted.registry.domain.*;
@@ -16,6 +17,7 @@ import org.elasticsearch.common.collect.Tuple;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import javax.annotation.PostConstruct;
@@ -25,7 +27,6 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 
 @Component
-@ComponentScan("eu.openminted.content")
 public class CorpusBuilderImpl implements CorpusBuilder {
     private static Logger log = Logger.getLogger(CorpusBuilderImpl.class.getName());
 
@@ -34,6 +35,9 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
     @Autowired
     private CorpusBuilderInfoDao corpusBuilderInfoDao;
+
+    @Autowired
+    private ThreadPoolExecutor threadPoolExecutor;
 
     @Autowired
     private StoreRESTClient storeRESTClient;
@@ -65,8 +69,6 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
     @Override
     public Corpus prepareCorpus(Query query) {
-
-        log.info("prepareCorpus");
 
         if (query == null) {
             query = new Query("*:*", new HashMap<>(), new ArrayList<>(), 0, 1);
@@ -217,10 +219,45 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             corpora.add(corpusMetadata.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue());
             log.info("Sending " + corpusMetadata.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue() + " to execution Queue");
 
-            String url = registryHost + "/omtd-registry/request/corpus";
+            new Thread(() -> {
+                CorpusBuilderInfoModel corpusBuilderInfoModel = null;
+                try {
+                    corpusBuilderInfoModel = corpusBuilderInfoDao.find(corpusMetadata.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue());
 
+                    Collection<Future<?>> futures = new ArrayList<>();
+                    Query query = new ObjectMapper().readValue(corpusBuilderInfoModel.getQuery(), Query.class);
+
+
+                    for (ContentConnector connector : contentConnectors) {
+                        FetchMetadataTask task = new FetchMetadataTask(storeRESTClient, connector, query, tempDirectoryPath, corpusBuilderInfoModel.getArchiveId());
+                        futures.add(threadPoolExecutor.submit(task));
+                    }
+                    corpusBuilderInfoModel.setStatus(CorpusStatus.PROCESSING.toString());
+                    corpusBuilderInfoDao.update(corpusBuilderInfoModel.getId(), "status", CorpusStatus.PROCESSING);
+                    for (Future<?> future : futures) {
+                        future.get();
+                    }
+                    corpusBuilderInfoModel.setStatus(CorpusStatus.CREATED.toString());
+                    corpusBuilderInfoDao.update(corpusBuilderInfoModel.getId(), "status", CorpusStatus.CREATED);
+
+                    //TODO: Email to user when corpus is ready which will include the landing page for the corpus
+                } catch (Exception ex) {
+                    log.error("CorpusBuilderImpl.buildCorpus", ex);
+                    if (corpusBuilderInfoModel != null) {
+                        corpusBuilderInfoModel.setStatus(CorpusStatus.CANCELED.toString());
+                        corpusBuilderInfoDao.update(corpusBuilderInfoModel.getId(), "status", CorpusStatus.CANCELED);
+                    }
+                }
+            }).start();
+        }
+
+        try {
+
+            String url = registryHost + "/omtd-registry/request/corpus";
             RestTemplate restTemplate = new RestTemplate();
-//            restTemplate.postForObject(url, corpusMetadata, Corpus.class);
+            restTemplate.postForObject(url, corpusMetadata, Corpus.class);
+        } catch (HttpServerErrorException e) {
+            log.error("CorpusBuilderImpl.buildCorpus: Error posting corpus at registry", e);
         }
     }
 
