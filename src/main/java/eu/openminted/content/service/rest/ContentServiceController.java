@@ -48,7 +48,6 @@ public class ContentServiceController {
 
     @RequestMapping(value = "/corpus/prepare", method = RequestMethod.POST, headers = "Accept=application/json")
     public Corpus prepare(@RequestBody Query query) {
-        query.setTo(1000);
         return corpusBuilder.prepareCorpus(query);
     }
 

@@ -7,13 +7,11 @@ import eu.openminted.content.service.dao.CorpusBuilderInfoDao;
 import eu.openminted.content.service.extensions.CorpusBuilderExecutionQueueConsumer;
 import eu.openminted.content.service.extensions.SearchResultExtension;
 import eu.openminted.content.service.model.CorpusBuilderInfoModel;
-import eu.openminted.content.service.tasks.FetchMetadataTask;
 import eu.openminted.corpus.CorpusBuilder;
 import eu.openminted.corpus.CorpusStatus;
 import eu.openminted.registry.domain.*;
 import eu.openminted.store.restclient.StoreRESTClient;
 import org.apache.log4j.Logger;
-import org.elasticsearch.common.collect.Tuple;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.stereotype.Component;
@@ -21,12 +19,16 @@ import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import javax.annotation.PostConstruct;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 
 @Component
+@ComponentScan("eu.openminted.content")
 public class CorpusBuilderImpl implements CorpusBuilder {
     private static Logger log = Logger.getLogger(CorpusBuilderImpl.class.getName());
 
@@ -56,6 +58,9 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
     private BlockingQueue<String> corpora = new LinkedBlockingQueue<>();
 
+    /***
+     * Spring method for initializing the consumer of the corpora queue
+     */
     @PostConstruct
     public void init() {
         new Thread(() -> {
@@ -67,6 +72,11 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         }).start();
     }
 
+    /***
+     * Method for preparing the corpus building process for a new corpus
+     * @param query the query as inserted in the prepare method of the controller
+     * @return the Coprus that the user is building
+     */
     @Override
     public Corpus prepareCorpus(Query query) {
 
@@ -75,12 +85,16 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         } else if (query.getKeyword() == null || query.getKeyword().isEmpty()) {
             query.setKeyword("*:*");
         }
+        // Setting query rows up to 500 for improving speed between fetching and importing metadata
+        query.setTo(500);
 
         // if registryHost ends with '/' remove it
         registryHost = registryHost.replaceAll("/$", "");
 
         Corpus corpusMetadata = new Corpus();
         String queryString = "";
+
+        // tempQuery is used to import necessary information about the metadata and include them into the new corpus
         Query tempQuery = new Query(query.getKeyword(), query.getParams(), new ArrayList<>(), 0, 1);
 
         CorpusInfo corpusInfo = new CorpusInfo();
@@ -212,55 +226,35 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         return corpusMetadata;
     }
 
+    /***
+     * Method for building the corpus metadata.
+     * Adds the corpusId to the execution queue
+     * and the CorpusBuilderExecutionQueueConsumer
+     * is responsible to create the new corpus
+     * @param corpusMetadata the Corpus as built from the user
+     */
     @Override
     public void buildCorpus(Corpus corpusMetadata) {
 
         if (contentConnectors != null) {
             corpora.add(corpusMetadata.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue());
-            log.info("Sending " + corpusMetadata.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue() + " to execution Queue");
-
-            new Thread(() -> {
-                CorpusBuilderInfoModel corpusBuilderInfoModel = null;
-                try {
-                    corpusBuilderInfoModel = corpusBuilderInfoDao.find(corpusMetadata.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue());
-
-                    Collection<Future<?>> futures = new ArrayList<>();
-                    Query query = new ObjectMapper().readValue(corpusBuilderInfoModel.getQuery(), Query.class);
-
-
-                    for (ContentConnector connector : contentConnectors) {
-                        FetchMetadataTask task = new FetchMetadataTask(storeRESTClient, connector, query, tempDirectoryPath, corpusBuilderInfoModel.getArchiveId());
-                        futures.add(threadPoolExecutor.submit(task));
-                    }
-                    corpusBuilderInfoModel.setStatus(CorpusStatus.PROCESSING.toString());
-                    corpusBuilderInfoDao.update(corpusBuilderInfoModel.getId(), "status", CorpusStatus.PROCESSING);
-                    for (Future<?> future : futures) {
-                        future.get();
-                    }
-                    corpusBuilderInfoModel.setStatus(CorpusStatus.CREATED.toString());
-                    corpusBuilderInfoDao.update(corpusBuilderInfoModel.getId(), "status", CorpusStatus.CREATED);
-
-                    //TODO: Email to user when corpus is ready which will include the landing page for the corpus
-                } catch (Exception ex) {
-                    log.error("CorpusBuilderImpl.buildCorpus", ex);
-                    if (corpusBuilderInfoModel != null) {
-                        corpusBuilderInfoModel.setStatus(CorpusStatus.CANCELED.toString());
-                        corpusBuilderInfoDao.update(corpusBuilderInfoModel.getId(), "status", CorpusStatus.CANCELED);
-                    }
-                }
-            }).start();
+            log.debug("Sending " + corpusMetadata.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue() + " to corpora queue for execution");
         }
 
         try {
-
             String url = registryHost + "/omtd-registry/request/corpus";
             RestTemplate restTemplate = new RestTemplate();
             restTemplate.postForObject(url, corpusMetadata, Corpus.class);
         } catch (HttpServerErrorException e) {
-            log.error("CorpusBuilderImpl.buildCorpus: Error posting corpus at registry", e);
+            log.error("CorpusBuilderImpl.buildCorpus: Error posting corpus at registry. Error stacktrace is omitted on purpose");
         }
     }
 
+    /***
+     * Returns the status of the building process for a particular corpusId
+     * @param s the corpusId
+     * @return the status of the building process in the form of the CorpusStatus enum
+     */
     @Override
     public CorpusStatus getStatus(String s) {
 
@@ -275,17 +269,35 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         return null;
     }
 
+    /***
+     * Cancels the building process for a particular corpusId
+     * @param s the corpusId
+     */
     @Override
     public void cancelProcess(String s) {
 
         try {
-            corpusBuilderInfoDao.update(s, "status", CorpusStatus.CANCELED);
-            log.info(corpusBuilderInfoDao.find(s));
+            CorpusBuilderInfoModel model = corpusBuilderInfoDao.find(s);
+
+            if (model.getStatus().equalsIgnoreCase(CorpusStatus.PROCESSING.toString())) {
+
+                if (corpusBuilderExecutionQueueConsumer.getActiveProcesses().get(s).cancel(true)) {
+                    corpusBuilderExecutionQueueConsumer.getActiveProcesses().remove(s);
+                    corpusBuilderInfoDao.update(s, "status", CorpusStatus.CANCELED);
+                }
+
+            } else if (model.getStatus().equalsIgnoreCase(CorpusStatus.SUBMITTED.toString())) {
+                corpusBuilderInfoDao.update(s, "status", CorpusStatus.CANCELED);
+            }
         } catch (Exception e) {
             log.error("CorpusBuilderImpl.cancelProcess", e);
         }
     }
 
+    /***
+     * Deletes the corpus for a particular corpusId
+     * @param s the corpusId
+     */
     @Override
     public void deleteCorpus(String s) {
 
@@ -297,6 +309,10 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         }
     }
 
+    /***
+     * Method that creates the corpusId
+     * @return a String with the new corpusId
+     */
     private String createCorpusId() {
         return UUID.randomUUID().toString();
     }

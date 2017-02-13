@@ -2,23 +2,16 @@ package eu.openminted.content.service.tasks;
 
 import eu.openminted.content.connector.ContentConnector;
 import eu.openminted.content.connector.Query;
-import eu.openminted.content.service.extensions.FetchMetadataHandler;
 import eu.openminted.store.restclient.StoreRESTClient;
 import org.apache.commons.io.IOUtils;
 import org.apache.log4j.Logger;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
-import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
-import org.xml.sax.XMLReader;
-import org.xml.sax.helpers.XMLFilterImpl;
-import org.xml.sax.helpers.XMLReaderFactory;
 
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.parsers.SAXParser;
-import javax.xml.parsers.SAXParserFactory;
 import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerConfigurationException;
 import javax.xml.transform.TransformerException;
@@ -52,14 +45,14 @@ public class FetchMetadataTask implements Runnable {
         tempDirectoryPath = tempDirectoryPath.replaceAll("/$", "");
         String archivePath = tempDirectoryPath + "/" + archiveId + "/" + connector.getSourceName();
 
-
+//*
         File archive = new File(archivePath);
         if (archive.mkdirs()) log.debug("Creating " + archivePath + " directory");
         File metadataFile = new File(archive.getPath() + "/" + archiveId + ".xml");
         File downloadFile = new File(archive.getPath() + "/" + archiveId + ".pdf");
         List<String> identifiers = new ArrayList<>();
 
-      //*
+/*
         SAXParserFactory factory = SAXParserFactory.newInstance();
         SAXParser saxParser;
 
@@ -83,9 +76,9 @@ public class FetchMetadataTask implements Runnable {
         } catch (ParserConfigurationException e) {
             log.error("ParserConfigurationException", e);
         }
-    //    */
+    */
 
-    /*
+
         DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
         XPath xpath = XPathFactory.newInstance().newXPath();
 
@@ -126,13 +119,12 @@ public class FetchMetadataTask implements Runnable {
                     storeRESTClient.updload(metadataFile, archiveId + "/metadata", identifier + ".xml");
 
                 } catch (XPathExpressionException e) {
-                    log.error("FetchMetadataTask.run- Fetching Metadata -XPathExpressionException ", e);
+                    log.error("FetchMetadataTask.run-Fetching Metadata -XPathExpressionException ", e);
                 }
             }
 
-            // */
             IOUtils.closeQuietly(inputStream);
-        /*
+
             for (String identifier : identifiers) {
                 try {
                     InputStream fullTextInputStream = connector.downloadFullText(identifier);
@@ -151,11 +143,9 @@ public class FetchMetadataTask implements Runnable {
                     log.error("FetchMetadataTask.run- Downloading document -IOException ", e);
                 }
             }
-        */
-        //}
+        }
 
         storeRESTClient.finalizeArchive(archiveId);
-
 
 
 // next line shoul be commited in case of defaultHandler
