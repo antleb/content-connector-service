@@ -14,6 +14,7 @@ import eu.openminted.store.restclient.StoreRESTClient;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
@@ -263,7 +264,11 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         try {
             corpusBuilderInfoModel = corpusBuilderInfoDao.find(s);
             return CorpusStatus.valueOf(corpusBuilderInfoModel.getStatus());
+        } catch (EmptyResultDataAccessException e) {
+
+            log.error("Corpus not found with corpusId " + s);
         } catch (Exception e) {
+
             log.error("CorpusBuilderImpl.getStatus", e);
         }
         return null;
@@ -278,17 +283,13 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
         try {
             CorpusBuilderInfoModel model = corpusBuilderInfoDao.find(s);
+            corpusBuilderInfoDao.update(s, "status", CorpusStatus.CANCELED);
 
             if (model.getStatus().equalsIgnoreCase(CorpusStatus.PROCESSING.toString())) {
-
-                if (corpusBuilderExecutionQueueConsumer.getActiveProcesses().get(s).cancel(true)) {
-                    corpusBuilderExecutionQueueConsumer.getActiveProcesses().remove(s);
-                    corpusBuilderInfoDao.update(s, "status", CorpusStatus.CANCELED);
-                }
-
-            } else if (model.getStatus().equalsIgnoreCase(CorpusStatus.SUBMITTED.toString())) {
-                corpusBuilderInfoDao.update(s, "status", CorpusStatus.CANCELED);
+                corpusBuilderExecutionQueueConsumer.cancelActiveProcess(s);
             }
+
+            storeRESTClient.deleteArchive(model.getArchiveId());
         } catch (Exception e) {
             log.error("CorpusBuilderImpl.cancelProcess", e);
         }

@@ -2,6 +2,9 @@ package eu.openminted.content.service.tasks;
 
 import eu.openminted.content.connector.ContentConnector;
 import eu.openminted.content.connector.Query;
+import eu.openminted.content.service.dao.CorpusBuilderInfoDao;
+import eu.openminted.content.service.model.CorpusBuilderInfoModel;
+import eu.openminted.corpus.CorpusStatus;
 import eu.openminted.store.restclient.StoreRESTClient;
 import org.apache.commons.io.IOUtils;
 import org.apache.log4j.Logger;
@@ -22,6 +25,8 @@ import javax.xml.xpath.*;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class FetchMetadataTask implements Runnable {
     private static Logger log = Logger.getLogger(FetchMetadataTask.class.getName());
@@ -30,6 +35,22 @@ public class FetchMetadataTask implements Runnable {
     private String archiveId;
     private StoreRESTClient storeRESTClient;
     private String tempDirectoryPath;
+    private InputStream inputStream;
+    private CorpusBuilderInfoDao corpusBuilderInfoDao;
+    private String corpusId;
+    private boolean isInterrupted;
+
+    public InputStream getInputStream() {
+        return inputStream;
+    }
+
+    public void setCorpusBuilderInfoDao(CorpusBuilderInfoDao corpusBuilderInfoDao) {
+        this.corpusBuilderInfoDao = corpusBuilderInfoDao;
+    }
+
+    public void setCorpusId(String corpusId) {
+        this.corpusId = corpusId;
+    }
 
     public FetchMetadataTask(StoreRESTClient storeRESTClient, ContentConnector connector, Query query, String tempDirectoryPath, String archiveId) {
         this.connector = connector;
@@ -41,7 +62,6 @@ public class FetchMetadataTask implements Runnable {
 
     @Override
     public void run() {
-        InputStream inputStream = null;
         tempDirectoryPath = tempDirectoryPath.replaceAll("/$", "");
         String archivePath = tempDirectoryPath + "/" + archiveId + "/" + connector.getSourceName();
 
@@ -85,9 +105,26 @@ public class FetchMetadataTask implements Runnable {
         Document currentDoc = null;
         NodeList nodes = null;
 
+        final long period = (long) 10000;
+
+        TimerTask timerTask = new TimerTask() {
+            @Override
+            public void run() {
+                CorpusBuilderInfoModel corpusBuilderInfoModel = corpusBuilderInfoDao.find(corpusId);
+                if (corpusBuilderInfoModel.getStatus().equalsIgnoreCase(CorpusStatus.CANCELED.toString())) {
+                    IOUtils.closeQuietly(inputStream);
+                    isInterrupted = true;
+                }
+            }
+        };
+
+        Timer timer = new Timer(true);
+        timer.schedule(timerTask, 0, period);
+
         try {
             currentDoc = dbf.newDocumentBuilder().newDocument();
             inputStream = connector.fetchMetadata(query);
+
             Document doc = dbf.newDocumentBuilder().parse(inputStream);
             nodes = (NodeList) xpath.evaluate("//OMTDPublications/documentMetadataRecord", doc, XPathConstants.NODESET);
         } catch (ParserConfigurationException e) {
@@ -102,6 +139,7 @@ public class FetchMetadataTask implements Runnable {
 
         if (nodes != null) {
             for (int i = 0; i < nodes.getLength(); i++) {
+                if (isInterrupted) break;
                 Node imported = currentDoc.importNode(nodes.item(i), true);
                 XPathExpression identifierExpression;
                 try {
@@ -126,6 +164,7 @@ public class FetchMetadataTask implements Runnable {
             IOUtils.closeQuietly(inputStream);
 
             for (String identifier : identifiers) {
+                if (isInterrupted) break;
                 try {
                     InputStream fullTextInputStream = connector.downloadFullText(identifier);
                     FileOutputStream outputStream = null;
@@ -145,8 +184,7 @@ public class FetchMetadataTask implements Runnable {
             }
         }
 
-        storeRESTClient.finalizeArchive(archiveId);
-
+        timer.cancel();
 
 // next line shoul be commited in case of defaultHandler
 //        IOUtils.closeQuietly(inputStream);
