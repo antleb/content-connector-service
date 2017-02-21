@@ -284,11 +284,6 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         try {
             CorpusBuilderInfoModel model = corpusBuilderInfoDao.find(s);
             corpusBuilderInfoDao.update(s, "status", CorpusStatus.CANCELED);
-
-            if (model.getStatus().equalsIgnoreCase(CorpusStatus.PROCESSING.toString())) {
-                corpusBuilderExecutionQueueConsumer.cancelActiveProcess(s);
-            }
-
             storeRESTClient.deleteArchive(model.getArchiveId());
         } catch (Exception e) {
             log.error("CorpusBuilderImpl.cancelProcess", e);
