@@ -76,7 +76,6 @@ public class CorpusBuilderExecutionQueueConsumer {
                                 for (Future<?> future : futures) {
                                     future.get();
                                 }
-                                //TODO: Email to user when corpus is ready which will include the landing page for the corpus
                             } catch (InterruptedException e) {
 
                                 log.info("Thread Interrupted or error in execution");
@@ -101,6 +100,10 @@ public class CorpusBuilderExecutionQueueConsumer {
                                     corpusBuilderInfoModel.setStatus(CorpusStatus.CREATED.toString());
                                     corpusBuilderInfoDao.update(corpusBuilderInfoModel.getId(), "status", CorpusStatus.CREATED);
                                 }
+
+                                //TODO: Email to user when corpus is ready which will include the landing page for the corpus
+                                new Thread(new JMSProducer()).start();
+                                new Thread(new JMSConsumer()).start();
                             }
                         }
                     });
