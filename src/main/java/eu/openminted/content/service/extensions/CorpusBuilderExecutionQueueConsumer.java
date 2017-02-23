@@ -39,6 +39,9 @@ public class CorpusBuilderExecutionQueueConsumer {
     @org.springframework.beans.factory.annotation.Value("${tempDirectoryPath}")
     private String tempDirectoryPath;
 
+    @org.springframework.beans.factory.annotation.Value("${jms.host}")
+    private String brokerUrl;
+
     public void init(BlockingQueue<String> corpora) {
 
         if (this.corpora == null) this.corpora = corpora;
@@ -91,6 +94,7 @@ public class CorpusBuilderExecutionQueueConsumer {
                                 }
                             } finally {
                                 corpusBuilderInfoModel = corpusBuilderInfoDao.find(corpusId);
+                                String message = "";
                                 if (corpusBuilderInfoModel != null
                                         && (!corpusBuilderInfoModel.getStatus().equalsIgnoreCase(CorpusStatus.CANCELED.toString())
                                         || corpusBuilderInfoModel.getStatus().equalsIgnoreCase(CorpusStatus.DELETED.toString()))) {
@@ -99,11 +103,18 @@ public class CorpusBuilderExecutionQueueConsumer {
 
                                     corpusBuilderInfoModel.setStatus(CorpusStatus.CREATED.toString());
                                     corpusBuilderInfoDao.update(corpusBuilderInfoModel.getId(), "status", CorpusStatus.CREATED);
+                                    message = "Corpus has been created for corpusId " + corpusId + " at archiveId " + corpusBuilderInfoModel.getArchiveId();
+                                } else {
+                                    message = "Corpus with corpusId " + corpusId + " has been interrupted!";
                                 }
 
                                 //TODO: Email to user when corpus is ready which will include the landing page for the corpus
-                                new Thread(new JMSProducer()).start();
-                                new Thread(new JMSConsumer()).start();
+                                String queueName = "email_notification";
+                                JMSProducer producer = new JMSProducer(brokerUrl, queueName);
+                                producer.setMessage(message);
+
+                                new Thread(producer).start();
+                                new Thread(new JMSConsumer(brokerUrl, queueName)).start();
                             }
                         }
                     });

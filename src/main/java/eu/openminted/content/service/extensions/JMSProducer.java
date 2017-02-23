@@ -7,12 +7,21 @@ import javax.jms.*;
 import java.util.Random;
 
 public class JMSProducer implements Runnable {
+    private String brokerUrl;
+    private String queueName;
+    private String message;
+
+    public JMSProducer(String brokerUrl, String queueName) {
+        this.brokerUrl = brokerUrl;
+        this.queueName = queueName;
+    }
+
     @Override
     public void run() {
         try {
             // Create a ConnectionFactory
             ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory(
-                    "tcp://83.212.101.85:61616");
+                    brokerUrl);
 
             // Create a Connection
             Connection connection = connectionFactory.createConnection();
@@ -23,23 +32,20 @@ public class JMSProducer implements Runnable {
                     Session.AUTO_ACKNOWLEDGE);
 
             // Create the destination (Topic or Queue)
-            Destination destination = session.createQueue("TEST.FOO");
+            Destination destination = session.createQueue(queueName);
 
             // Create a MessageProducer from the Session to the Topic or
             // Queue
             MessageProducer producer = session.createProducer(destination);
-            producer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
+            producer.setDeliveryMode(DeliveryMode.PERSISTENT);
 
             // Create a messages
-            String text = "Hello world! From: "
-                    + Thread.currentThread().getName() + " : "
-                    + this.hashCode();
-            TextMessage message = session.createTextMessage(text);
+            TextMessage textMessage = session.createTextMessage(message);
 
             // Tell the producer to send the message
-            System.out.println("Sent message: " + message.hashCode()
+            System.out.println("Sent message: " + textMessage.hashCode()
                     + " : " + Thread.currentThread().getName());
-            producer.send(message);
+            producer.send(textMessage);
 
             // Clean up
             session.close();
@@ -48,5 +54,9 @@ public class JMSProducer implements Runnable {
             System.out.println("Caught: " + e);
             e.printStackTrace();
         }
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
     }
 }

@@ -5,11 +5,19 @@ import org.apache.activemq.ActiveMQConnectionFactory;
 import javax.jms.*;
 
 public class JMSConsumer implements Runnable, ExceptionListener {
+    private String brokerUrl;
+    private String queueName;
+
+    public JMSConsumer(String brokerUrl, String queueName) {
+        this.brokerUrl = brokerUrl;
+        this.queueName = queueName;
+    }
+
     @Override
     public void run() {
         try {
             // Create a ConnectionFactory
-            ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory("tcp://83.212.101.85:61616");
+            ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory(brokerUrl);
 
             // Create a Connection
             Connection connection = connectionFactory.createConnection();
@@ -21,13 +29,13 @@ public class JMSConsumer implements Runnable, ExceptionListener {
             Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
 
             // Create the destination (Topic or Queue)
-            Destination destination = session.createQueue("TEST.FOO");
+            Destination destination = session.createQueue(queueName);
 
             // Create a MessageConsumer from the Session to the Topic or Queue
             MessageConsumer consumer = session.createConsumer(destination);
 
             // Wait for a message
-            Message message = consumer.receive(1000);
+            Message message = consumer.receive(5000);
 
             if (message instanceof TextMessage) {
                 TextMessage textMessage = (TextMessage) message;
