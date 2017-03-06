@@ -1,26 +1,28 @@
 package eu.openminted.content.service.extensions;
 
 import org.apache.activemq.ActiveMQConnectionFactory;
+import org.apache.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import javax.jms.*;
 
-public class JMSConsumer implements Runnable, ExceptionListener {
-    private String brokerUrl;
-    private String queueName;
+@Component
+public class JMSConsumer implements ExceptionListener, MessageListener {
+    private static Logger log = Logger.getLogger(JMSConsumer.class.getName());
 
-    public JMSConsumer(String brokerUrl, String queueName) {
-        this.brokerUrl = brokerUrl;
-        this.queueName = queueName;
-    }
+    @org.springframework.beans.factory.annotation.Value("${jms.content.corpus.topic}")
+    private String topicName;
 
-    @Override
-    public void run() {
+    @Autowired
+    private ActiveMQConnectionFactory connectionFactory;
+
+    public void listen() {
         try {
-            // Create a ConnectionFactory
-            ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory(brokerUrl);
-
             // Create a Connection
             Connection connection = connectionFactory.createConnection();
+            // Set unique clientID to connection prior to connect
+            connection.setClientID(Integer.toString(this.hashCode()));
             connection.start();
 
             connection.setExceptionListener(this);
@@ -28,34 +30,35 @@ public class JMSConsumer implements Runnable, ExceptionListener {
             // Create a Session
             Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
 
-            // Create the destination (Topic or Queue)
-            Destination destination = session.createQueue(queueName);
+            // Create the Topic
+            Topic topic = session.createTopic(topicName);
 
-            // Create a MessageConsumer from the Session to the Topic or Queue
-            MessageConsumer consumer = session.createConsumer(destination);
+            // Create a TopicSubscriber from the Session to the Topic
+            TopicSubscriber subscriber = session.createDurableSubscriber(topic, "SUBSCRIBER");
+            subscriber.setMessageListener(this);
 
-            // Wait for a message
-            Message message = consumer.receive(5000);
-
-            if (message instanceof TextMessage) {
-                TextMessage textMessage = (TextMessage) message;
-                String text = textMessage.getText();
-                System.out.println("Received: " + text);
-            } else {
-                System.out.println("Received: " + message);
-            }
-
-            consumer.close();
-            session.close();
-            connection.close();
         } catch (Exception e) {
-            System.out.println("Caught: " + e);
-            e.printStackTrace();
+            log.error("Caught Exception: " + e);
         }
     }
 
     public synchronized void onException(JMSException ex) {
-        System.out.println("JMS Exception occured.  Shutting down client.");
+        log.error("JMS Exception occurred.  Shutting down client.");
+    }
+
+    @Override
+    public void onMessage(Message message) {
+        if (message instanceof TextMessage) {
+            try {
+                TextMessage textMessage = (TextMessage) message;
+                String text = textMessage.getText();
+                log.info("Message Received: " + text);
+            } catch (JMSException e) {
+                log.error("Error Receiving Message", e);
+            }
+        } else {
+            log.info("Message Received: " + message);
+        }
     }
 }
 

@@ -32,4 +32,8 @@
 	<bean id="storeRESTClient" class="eu.openminted.store.restclient.StoreRESTClient">
 		<constructor-arg index="0" type="String" value="${store.host}"/>
 	</bean>
+
+	<bean id="connectionFactory" class="org.apache.activemq.ActiveMQConnectionFactory">
+		<constructor-arg index="0" type="String" value="${jms.host}"/>
+	</bean>
 </beans>

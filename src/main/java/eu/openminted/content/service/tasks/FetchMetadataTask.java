@@ -65,39 +65,11 @@ public class FetchMetadataTask implements Runnable {
         tempDirectoryPath = tempDirectoryPath.replaceAll("/$", "");
         String archivePath = tempDirectoryPath + "/" + archiveId + "/" + connector.getSourceName();
 
-//*
         File archive = new File(archivePath);
         if (archive.mkdirs()) log.debug("Creating " + archivePath + " directory");
         File metadataFile = new File(archive.getPath() + "/" + archiveId + ".xml");
         File downloadFile = new File(archive.getPath() + "/" + archiveId + ".pdf");
         List<String> identifiers = new ArrayList<>();
-
-/*
-        SAXParserFactory factory = SAXParserFactory.newInstance();
-        SAXParser saxParser;
-
-        try {
-
-            saxParser = factory.newSAXParser();
-            inputStream = connector.fetchMetadata(query);
-            FetchMetadataHandler handler = new FetchMetadataHandler();
-            handler.setMetadataFile(metadataFile);
-            handler.setDownloadFile(downloadFile);
-            handler.setConnector(connector);
-            handler.setStoreRESTClient(storeRESTClient);
-            handler.setArchiveId(this.archiveId);
-            handler.setIdentifiers(identifiers);
-
-            saxParser.parse(inputStream, handler);
-        } catch (SAXException e) {
-            log.error("SAXException", e);
-        } catch (IOException e) {
-            log.error("IOException", e);
-        } catch (ParserConfigurationException e) {
-            log.error("ParserConfigurationException", e);
-        }
-    */
-
 
         DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
         XPath xpath = XPathFactory.newInstance().newXPath();
@@ -130,7 +102,8 @@ public class FetchMetadataTask implements Runnable {
         } catch (ParserConfigurationException e) {
             log.error("FetchMetadataTask.run-ParserConfigurationException ", e);
         } catch (IOException e) {
-            log.error("FetchMetadataTask.run-IOException ", e);
+            log.info("Fetching metadata has been interrupted");
+            log.debug("FetchMetadataTask.run-IOException ", e);
         } catch (SAXException e) {
             e.printStackTrace();
         } catch (XPathExpressionException e) {
@@ -184,10 +157,8 @@ public class FetchMetadataTask implements Runnable {
             }
         }
 
+        // Close timer for cancelling process
         timer.cancel();
-
-// next line shoul be commited in case of defaultHandler
-//        IOUtils.closeQuietly(inputStream);
         if (metadataFile.delete()) log.debug("Removing temp metadata file");
         if (downloadFile.delete()) log.debug("Removing temp download file");
         if (archive.delete()) log.debug("Removing temp directory");
