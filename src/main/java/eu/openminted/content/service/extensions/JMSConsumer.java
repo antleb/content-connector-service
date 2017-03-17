@@ -16,21 +16,6 @@ public class JMSConsumer implements ExceptionListener, MessageListener {
     @org.springframework.beans.factory.annotation.Value("${jms.content.corpus.topic}")
     private String topicName;
 
-    @org.springframework.beans.factory.annotation.Value("${mail.port}")
-    private String mailPort;
-
-    @org.springframework.beans.factory.annotation.Value("${mail.sender.id}")
-    private String mailSenderId;
-
-    @org.springframework.beans.factory.annotation.Value("${mail.username}")
-    private String mailUsername;
-
-    @org.springframework.beans.factory.annotation.Value("${mail.password}")
-    private String mailPassword;
-
-    @org.springframework.beans.factory.annotation.Value("${mail.smtp.host}")
-    private String mailSmtpHost;
-
     @Autowired
     private ActiveMQConnectionFactory connectionFactory;
 
