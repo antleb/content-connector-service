@@ -7,21 +7,24 @@ import eu.openminted.content.service.dao.CorpusBuilderInfoDao;
 import eu.openminted.content.service.model.CorpusBuilderInfoModel;
 import eu.openminted.content.service.tasks.FetchMetadataTask;
 import eu.openminted.corpus.CorpusStatus;
+import eu.openminted.registry.domain.Corpus;
 import eu.openminted.store.restclient.StoreRESTClient;
-import org.apache.commons.io.IOUtils;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.RestTemplate;
 
-import javax.jms.JMSException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.*;
 
 @Component
 public class CorpusBuilderExecutionQueueConsumer {
     private static Logger log = Logger.getLogger(CorpusBuilderExecutionQueueConsumer.class.getName());
 
-    private BlockingQueue<String> corpora;
+    private BlockingQueue<Corpus> corpora;
 
     @Autowired(required = false)
     private List<ContentConnector> contentConnectors;
@@ -35,15 +38,21 @@ public class CorpusBuilderExecutionQueueConsumer {
     @Autowired
     private ThreadPoolExecutor threadPoolExecutor;
 
-    private ThreadPoolExecutor queueTasksThreadPoolExecutor;
+    @Autowired
+    private JMSProducer producer;
 
     @org.springframework.beans.factory.annotation.Value("${tempDirectoryPath}")
     private String tempDirectoryPath;
 
-    @Autowired
-    private JMSProducer producer;
+    @org.springframework.beans.factory.annotation.Value("${registry.host}")
+    private String registryHost;
 
-    public void init(BlockingQueue<String> corpora) {
+    private ThreadPoolExecutor queueTasksThreadPoolExecutor;
+
+    public void init(BlockingQueue<Corpus> corpora) {
+
+        // if registryHost ends with '/' remove it
+        registryHost = registryHost.replaceAll("/$", "");
 
         if (this.corpora == null) this.corpora = corpora;
         if (this.queueTasksThreadPoolExecutor == null)
@@ -51,8 +60,9 @@ public class CorpusBuilderExecutionQueueConsumer {
 
         while (true) {
             try {
-                String corpusId = corpora.poll(100, TimeUnit.MILLISECONDS);
-                if (corpusId != null && !corpusId.isEmpty()) {
+                Corpus corpus = corpora.poll(100, TimeUnit.MILLISECONDS);
+                if (corpus != null) {
+                    String corpusId = corpus.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue();
 
                     this.queueTasksThreadPoolExecutor.execute(() -> {
                         if (contentConnectors != null) {
@@ -104,12 +114,24 @@ public class CorpusBuilderExecutionQueueConsumer {
 
                                     corpusBuilderInfoModel.setStatus(CorpusStatus.CREATED.toString());
                                     corpusBuilderInfoDao.update(corpusBuilderInfoModel.getId(), "status", CorpusStatus.CREATED);
-                                    text = "Corpus has been created for corpusId " + corpusId + " at archiveId " + corpusBuilderInfoModel.getArchiveId();
+                                    text = "Corpus with ID " + corpusId + " has been created at archive with ID " + corpusBuilderInfoModel.getArchiveId();
+
+                                    try {
+                                        String url = registryHost + "/omtd-registry/request/corpus";
+                                        RestTemplate restTemplate = new RestTemplate();
+                                        restTemplate.postForObject(url, corpus, Corpus.class);
+                                        new Thread(()->producer.send("Corpus Build: Sending corpus with ID " + corpus.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue() + " to registry")).start();
+                                    } catch (HttpServerErrorException e) {
+                                        log.error("CorpusBuilderImpl.buildCorpus: Error posting corpus at registry. Error stacktrace is omitted on purpose");
+                                        new Thread(()->producer.send("Corpus Build: Error sending corpus with  ID " + corpus.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue() + " to registry")).start();
+                                    }
                                 } else {
                                     text = "Corpus with corpusId " + corpusId + " has been interrupted!";
                                 }
 
-                                //TODO: Email to user when corpus is ready which will include the landing page for the corpus
+                                if (!corpus.getCorpusInfo().getContactInfo().getContactEmail().isEmpty())
+                                    text = "email<" + corpus.getCorpusInfo().getContactInfo().getContactEmail() + ">subject<Corpus Build: Your corpus is ready>" + text;
+
                                 final String message = text;
                                 new Thread(()->producer.send(message)).start();
                             }

@@ -6,6 +6,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import javax.jms.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Component
 public class JMSConsumer implements ExceptionListener, MessageListener {
@@ -14,8 +16,26 @@ public class JMSConsumer implements ExceptionListener, MessageListener {
     @org.springframework.beans.factory.annotation.Value("${jms.content.corpus.topic}")
     private String topicName;
 
+    @org.springframework.beans.factory.annotation.Value("${mail.port}")
+    private String mailPort;
+
+    @org.springframework.beans.factory.annotation.Value("${mail.sender.id}")
+    private String mailSenderId;
+
+    @org.springframework.beans.factory.annotation.Value("${mail.username}")
+    private String mailUsername;
+
+    @org.springframework.beans.factory.annotation.Value("${mail.password}")
+    private String mailPassword;
+
+    @org.springframework.beans.factory.annotation.Value("${mail.smtp.host}")
+    private String mailSmtpHost;
+
     @Autowired
     private ActiveMQConnectionFactory connectionFactory;
+
+    @Autowired
+    private JavaMailer javaMailer;
 
     public void listen() {
         try {
@@ -53,6 +73,23 @@ public class JMSConsumer implements ExceptionListener, MessageListener {
                 TextMessage textMessage = (TextMessage) message;
                 String text = textMessage.getText();
                 log.info("Message Received: " + text);
+
+                if (text.contains("email")) {
+                    // Recipient's email ID needs to be mentioned.
+                    String to = "";
+                    String subject = "";
+
+                    Matcher match = Pattern.compile("^email<(.*)>subject<(.*)>(.*$)").matcher(text);
+                    if (match.find()) {
+                        to = match.group(1);
+                        subject = match.group(2);
+                        text = match.group(3);
+                    }
+
+                    if (to.isEmpty()) return;
+
+                    javaMailer.sendEmail(to, subject, text);
+                }
             } catch (JMSException e) {
                 log.error("Error Receiving Message", e);
             }

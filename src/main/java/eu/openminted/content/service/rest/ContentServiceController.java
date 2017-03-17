@@ -6,6 +6,7 @@ import eu.openminted.content.service.ContentService;
 import eu.openminted.content.service.dao.CorpusBuilderInfoDao;
 import eu.openminted.corpus.CorpusBuilder;
 import eu.openminted.corpus.CorpusStatus;
+import eu.openminted.registry.domain.ContactInfo;
 import eu.openminted.registry.domain.Corpus;
 import eu.openminted.registry.domain.MetadataHeaderInfo;
 import eu.openminted.registry.domain.MetadataIdentifier;
@@ -48,7 +49,14 @@ public class ContentServiceController {
 
     @RequestMapping(value = "/corpus/prepare", method = RequestMethod.POST, headers = "Accept=application/json")
     public Corpus prepare(@RequestBody Query query) {
-        return corpusBuilder.prepareCorpus(query);
+
+        Corpus corpus = corpusBuilder.prepareCorpus(query);
+        if (corpus != null) {
+            ContactInfo contactInfo = new ContactInfo();
+            contactInfo.setContactEmail("kgiann78@gmail.com");
+            corpus.getCorpusInfo().setContactInfo(contactInfo);
+        }
+        return corpus;
     }
 
     @RequestMapping(value = "/corpus/build", method = RequestMethod.GET, headers = "Accept=application/json")
