@@ -23,6 +23,30 @@ import java.util.Properties;
 
 @Component
 public class JavaMailer {
+    @org.springframework.beans.factory.annotation.Value("${mail.username}")
+    private String username;
+
+    @org.springframework.beans.factory.annotation.Value("${mail.api.token.url}")
+    private String apiTokenUrl;
+
+    @org.springframework.beans.factory.annotation.Value("${mail.oauth.clientId}")
+    private String oauthClientId;
+
+    @org.springframework.beans.factory.annotation.Value("${mail.oauth.secret}")
+    private String oauthSecret;
+
+    @org.springframework.beans.factory.annotation.Value("${mail.refresh.token}")
+    private String refreshToken;
+
+    @org.springframework.beans.factory.annotation.Value("${mail.access.token}")
+    private String accessToken;
+
+    @org.springframework.beans.factory.annotation.Value("${mail.token.expires}")
+    private String tokenExpiresString;
+
+    @org.springframework.beans.factory.annotation.Value("${mail.debug}")
+    private boolean mailDebug;
+
     private Properties properties;
     private long tokenExpires;
 
@@ -35,26 +59,26 @@ public class JavaMailer {
         properties.put("mail.smtp.sasl.mechanisms", "XOAUTH2");
         properties.put("mail.smtp.auth.login.disable", "true");
         properties.put("mail.smtp.auth.plain.disable", "true");
-        properties.put("mail.debug", "true");
+        properties.put("mail.debug", mailDebug);
 
-        tokenExpires = 1458168133864L;
+        if (tokenExpiresString != null && !tokenExpiresString.isEmpty()) {
+            try {
+                tokenExpires = Long.parseLong(tokenExpiresString);
+            } catch (Exception e) {
+                tokenExpires = 0L;
+            }
+        }
+
     }
 
     public void sendEmail(String to, String subject, String text) {
-        String TOKEN_URL = "https://www.googleapis.com/oauth2/v4/token";
-        String oauthClientId = "873237151023-mld63l7iboss5pe7i2cv1p8cnm0jgbb6.apps.googleusercontent.com";
-        String oauthSecret = "H4CT3RtQhvkZO4YK5z7ToDHb";
-        String refreshToken = "1/WsDHGk1GY-BgTz6Th4FYVTjJ2ATc9oFVhJ6u-dcMkzs";
-        String accessToken = "ya29.GlsQBCqYNogRT3jTcFzf4f1H7viuEUKyndZ7OAvke9fiZp0tTULyzprDWTj09pWU6SxpPaEGOhYnrN4zWuKmastD7lVR1WgH3XjDs85hfX4Z_ZVO3C3VGiJiArs-";
-        String username = "test.espas@gmail.com";
-
         if (System.currentTimeMillis() > tokenExpires) {
             try {
                 String request = "client_id=" + URLEncoder.encode(oauthClientId, "UTF-8")
                         + "&client_secret=" + URLEncoder.encode(oauthSecret, "UTF-8")
                         + "&refresh_token=" + URLEncoder.encode(refreshToken, "UTF-8")
                         + "&grant_type=refresh_token";
-                HttpURLConnection conn = (HttpURLConnection) new URL(TOKEN_URL).openConnection();
+                HttpURLConnection conn = (HttpURLConnection) new URL(apiTokenUrl).openConnection();
                 conn.setDoOutput(true);
                 conn.setRequestMethod("POST");
                 PrintWriter out = new PrintWriter(conn.getOutputStream());
