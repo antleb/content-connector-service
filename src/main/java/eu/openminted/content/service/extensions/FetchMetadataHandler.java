@@ -147,7 +147,7 @@ public class FetchMetadataHandler extends DefaultHandler {
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            storeRESTClient.updload(metadataFile, archiveId + "/metadata", identifier + ".xml");
+            storeRESTClient.storeFile(metadataFile, archiveId + "/metadata", identifier + ".xml");
         }
 
     }
@@ -172,7 +172,7 @@ public class FetchMetadataHandler extends DefaultHandler {
 
                 outputStream = new FileOutputStream(downloadFile, false);
                 IOUtils.copy(fullTextInputStream, outputStream);
-                storeRESTClient.updload(downloadFile, archiveId + "/documents", identifier + ".pdf");
+                storeRESTClient.storeFile(downloadFile, archiveId + "/documents", identifier + ".pdf");
             }
             IOUtils.closeQuietly(fullTextInputStream);
             IOUtils.closeQuietly(outputStream);

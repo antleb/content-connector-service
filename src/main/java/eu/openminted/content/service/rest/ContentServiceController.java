@@ -12,6 +12,7 @@ import eu.openminted.registry.domain.MetadataHeaderInfo;
 import eu.openminted.registry.domain.MetadataIdentifier;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.util.*;
 
@@ -25,6 +26,9 @@ public class ContentServiceController {
 
     @Autowired
     private CorpusBuilder corpusBuilder;
+
+    @Value("${authentication.token.email}")
+    private String tokenEmail;
 
     @RequestMapping(value = "/content/browse", method = RequestMethod.GET, headers = "Accept=application/json")
     public SearchResult browse(@RequestParam(value = "facets") String facets) {
@@ -53,7 +57,7 @@ public class ContentServiceController {
         Corpus corpus = corpusBuilder.prepareCorpus(query);
         if (corpus != null) {
             ContactInfo contactInfo = new ContactInfo();
-            contactInfo.setContactEmail("kgiann78@gmail.com");
+            contactInfo.setContactEmail(tokenEmail);
             corpus.getCorpusInfo().setContactInfo(contactInfo);
         }
         return corpus;

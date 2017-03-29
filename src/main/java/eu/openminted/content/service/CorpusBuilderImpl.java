@@ -215,7 +215,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         }
 
         if (!queryString.isEmpty()) {
-            String archiveID = storeRESTClient.createArchive();
+            String archiveID = storeRESTClient.createArchive().getResponse();
             DatasetDistributionInfo datasetDistributionInfo = new DatasetDistributionInfo();
             List<String> dowloadaURLs = new ArrayList<>();
             List<DatasetDistributionInfo> distributionInfos = new ArrayList<>();
@@ -231,6 +231,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             corpusInfo.setDistributionInfos(distributionInfos);
             storeRESTClient.createSubArchive(archiveID, "metadata");
             storeRESTClient.createSubArchive(archiveID, "documents");
+            storeRESTClient.createSubArchive(archiveID, "abstracts");
             corpusBuilderInfoDao.insert(metadataIdentifier.getValue(), queryString, CorpusStatus.SUBMITTED, archiveID);
 
             final String prepareMessage = "Prepare corpus Query: " + queryString;
@@ -239,6 +240,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             new Thread(()->producer.send("Prepare corpus ArchiveID: " + archiveID)).start();
             new Thread(()->producer.send("Prepare corpus SubarchiveID: " + archiveID + "/metadata")).start();
             new Thread(()->producer.send("Prepare corpus SubarchiveID: " + archiveID + "/documents")).start();
+            new Thread(()->producer.send("Prepare corpus SubarchiveID: " + archiveID + "/abstracts")).start();
         }
 
         return corpusMetadata;

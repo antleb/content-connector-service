@@ -69,6 +69,7 @@ public class FetchMetadataTask implements Runnable {
         if (archive.mkdirs()) log.debug("Creating " + archivePath + " directory");
         File metadataFile = new File(archive.getPath() + "/" + archiveId + ".xml");
         File downloadFile = new File(archive.getPath() + "/" + archiveId + ".pdf");
+        File abstractFile = new File(archive.getPath() + "/" + archiveId + ".txt");
         List<String> identifiers = new ArrayList<>();
 
         DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
@@ -105,7 +106,8 @@ public class FetchMetadataTask implements Runnable {
             log.info("Fetching metadata has been interrupted");
             log.debug("FetchMetadataTask.run-IOException ", e);
         } catch (SAXException e) {
-            e.printStackTrace();
+            log.info("Fetching metadata has been interrupted");
+            log.debug("FetchMetadataTask.run-SAXException ", e);
         } catch (XPathExpressionException e) {
             log.error("FetchMetadataTask.run-XPathExpressionException ", e);
         }
@@ -127,10 +129,22 @@ public class FetchMetadataTask implements Runnable {
                     }
 
                     writeToFile(imported, metadataFile);
-                    storeRESTClient.updload(metadataFile, archiveId + "/metadata", identifier + ".xml");
+                    storeRESTClient.storeFile(metadataFile, archiveId + "/metadata", identifier + ".xml");
+
+                    // Find Abstracts from imported node
+                    XPathExpression abstractTextExpression = xpath.compile("document/publication/abstracts/abstract/text()");
+                    String abstractText = (String) abstractTextExpression.evaluate(imported, XPathConstants.STRING);
+
+                    FileWriter fileWriter = new FileWriter(abstractFile);
+                    fileWriter.write(abstractText);
+                    fileWriter.flush();
+                    fileWriter.close();
+                    storeRESTClient.storeFile(abstractFile, archiveId + "/abstracts", identifier + ".txt");
 
                 } catch (XPathExpressionException e) {
                     log.error("FetchMetadataTask.run-Fetching Metadata -XPathExpressionException ", e);
+                } catch (IOException e) {
+                    log.error("FetchMetadataTask.run-Fetching Metadata -IOException ", e);
                 }
             }
 
@@ -145,7 +159,7 @@ public class FetchMetadataTask implements Runnable {
 
                         outputStream = new FileOutputStream(downloadFile, false);
                         IOUtils.copy(fullTextInputStream, outputStream);
-                        storeRESTClient.updload(downloadFile, archiveId + "/documents", identifier + ".pdf");
+                        storeRESTClient.storeFile(downloadFile, archiveId + "/documents", identifier + ".pdf");
                     }
                     IOUtils.closeQuietly(fullTextInputStream);
                     IOUtils.closeQuietly(outputStream);
