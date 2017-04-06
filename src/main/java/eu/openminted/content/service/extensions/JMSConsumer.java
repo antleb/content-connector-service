@@ -22,18 +22,23 @@ public class JMSConsumer implements ExceptionListener, MessageListener {
     @Autowired
     private JavaMailer javaMailer;
 
+    private Connection connection;
+
+    private Session session;
+
     public void listen() {
         try {
             // Create a Connection
-            Connection connection = connectionFactory.createConnection();
+            connection = connectionFactory.createConnection();
+            connection.setExceptionListener(this);
+
             // Set unique clientID to connection prior to connect
             connection.setClientID(Integer.toString(this.hashCode()));
             connection.start();
 
-            connection.setExceptionListener(this);
 
             // Create a Session
-            Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
+            session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
 
             // Create the Topic
             Topic topic = session.createTopic(topicName);
@@ -49,6 +54,13 @@ public class JMSConsumer implements ExceptionListener, MessageListener {
 
     public synchronized void onException(JMSException ex) {
         log.error("JMS Exception occurred.  Shutting down client.");
+
+        try {
+            session.close();
+            connection.close();
+        } catch (JMSException e) {
+            log.error("JMS Exception occurred while shutting down client.", e);
+        }
     }
 
     @Override
