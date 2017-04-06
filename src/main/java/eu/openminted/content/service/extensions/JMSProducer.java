@@ -43,7 +43,7 @@ public class JMSProducer {
             session.close();
             connection.close();
         } catch (JMSException e) {
-            log.error("Caught Exception: " + e);
+            log.error("Caught Exception", e);
         }
     }
 }
