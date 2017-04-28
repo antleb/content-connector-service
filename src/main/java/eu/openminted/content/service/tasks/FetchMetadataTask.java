@@ -3,6 +3,7 @@ package eu.openminted.content.service.tasks;
 import eu.openminted.content.connector.ContentConnector;
 import eu.openminted.content.connector.Query;
 import eu.openminted.content.service.dao.CorpusBuilderInfoDao;
+import eu.openminted.content.service.extensions.CacheClient;
 import eu.openminted.content.service.model.CorpusBuilderInfoModel;
 import eu.openminted.corpus.CorpusStatus;
 import eu.openminted.store.restclient.StoreRESTClient;
@@ -34,6 +35,7 @@ public class FetchMetadataTask implements Runnable {
     private Query query;
     private String archiveId;
     private StoreRESTClient storeRESTClient;
+    private CacheClient cacheClient;
     private String tempDirectoryPath;
     private InputStream inputStream;
     private CorpusBuilderInfoDao corpusBuilderInfoDao;
@@ -151,9 +153,10 @@ public class FetchMetadataTask implements Runnable {
             IOUtils.closeQuietly(inputStream);
 
             for (String identifier : identifiers) {
+                System.out.println("\n\n" + identifier);
                 if (isInterrupted) break;
                 try {
-                    InputStream fullTextInputStream = connector.downloadFullText(identifier);
+                    InputStream fullTextInputStream = cacheClient.getDocument(connector, identifier);
                     FileOutputStream outputStream = null;
                     if (fullTextInputStream != null) {
 
@@ -190,5 +193,9 @@ public class FetchMetadataTask implements Runnable {
         } catch (TransformerException e) {
             log.error("FetchMetadataTask.writeToFile-TransformerException ", e);
         }
+    }
+
+    public void setCacheClient(CacheClient cacheClient) {
+        this.cacheClient = cacheClient;
     }
 }

@@ -41,6 +41,9 @@ public class CorpusBuilderExecutionQueueConsumer {
     @Autowired
     private JMSProducer producer;
 
+    @Autowired
+    private CacheClient cacheClient;
+
     @org.springframework.beans.factory.annotation.Value("${tempDirectoryPath}")
     private String tempDirectoryPath;
 
@@ -82,6 +85,7 @@ public class CorpusBuilderExecutionQueueConsumer {
 
                                 for (ContentConnector connector : contentConnectors) {
                                     FetchMetadataTask task = new FetchMetadataTask(storeRESTClient, connector, query, tempDirectoryPath, corpusBuilderInfoModel.getArchiveId());
+                                    task.setCacheClient(cacheClient);
                                     task.setCorpusBuilderInfoDao(corpusBuilderInfoDao);
                                     task.setCorpusId(corpusId);
                                     futures.add(threadPoolExecutor.submit(task));

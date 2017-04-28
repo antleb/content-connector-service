@@ -2,13 +2,12 @@ package eu.openminted.content.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import eu.openminted.content.connector.*;
 import eu.openminted.content.service.dao.CorpusBuilderInfoDao;
 import eu.openminted.content.service.extensions.CorpusBuilderExecutionQueueConsumer;
 import eu.openminted.content.service.extensions.JMSConsumer;
 import eu.openminted.content.service.extensions.JMSProducer;
-import eu.openminted.content.service.extensions.SearchResultExtension;
 import eu.openminted.content.service.model.CorpusBuilderInfoModel;
+import eu.openminted.content.connector.*;
 import eu.openminted.corpus.CorpusBuilder;
 import eu.openminted.corpus.CorpusStatus;
 import eu.openminted.registry.domain.*;
@@ -125,7 +124,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         corpusInfo.setDistributionInfos(new ArrayList<>());
 
         Facet sourceFacet = new Facet();
-        SearchResultExtension result = new SearchResultExtension();
+        SearchResult result = new SearchResult();
         result.setFacets(new ArrayList<>());
         sourceFacet.setField("source");
         sourceFacet.setLabel("Content Source");
