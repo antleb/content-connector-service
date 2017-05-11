@@ -58,6 +58,8 @@ public class ContentServiceImpl implements ContentService {
                 sourceFacet.getValues().add(value);
 
                 result = result.merge(res);
+                result.setFrom(res.getFrom());
+                result.setTo(res.getTo());
             }
         }
 
