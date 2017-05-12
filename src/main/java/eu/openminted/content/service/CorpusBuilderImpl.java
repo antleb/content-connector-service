@@ -64,7 +64,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
     private BlockingQueue<Corpus> corpora = new LinkedBlockingQueue<>();
 
-    /***
+    /**
      * Spring method for initializing the consumer of the corpora queue
      */
     @PostConstruct
@@ -80,8 +80,8 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         new Thread(()->consumer.listen()).start();
     }
 
-    /***
-     * Method for preparing the corpus building process for a new corpus
+    /**
+     *   Method for preparing the corpus building process for a new corpus
      * @param query the query as inserted in the prepare method of the controller
      * @return the Coprus that the user is building
      */
@@ -245,7 +245,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         return corpusMetadata;
     }
 
-    /***
+    /**
      * Method for building the corpus metadata.
      * Adds the corpusId to the execution queue
      * and the CorpusBuilderExecutionQueueConsumer
@@ -261,7 +261,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         }
     }
 
-    /***
+    /**
      * Returns the status of the building process for a particular corpusId
      * @param s the corpusId
      * @return the status of the building process in the form of the CorpusStatus enum
@@ -285,7 +285,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         return null;
     }
 
-    /***
+    /**
      * Cancels the building process for a particular corpusId
      * @param s the corpusId
      */
@@ -306,7 +306,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         }
     }
 
-    /***
+    /**
      * Deletes the corpus for a particular corpusId
      * @param s the corpusId
      */
@@ -324,7 +324,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         }
     }
 
-    /***
+    /**
      * Method that creates the corpusId
      * @return a String with the new corpusId
      */
