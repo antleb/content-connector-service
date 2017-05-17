@@ -134,14 +134,23 @@ public class FetchMetadataTask implements Runnable {
                     storeRESTClient.storeFile(metadataFile, archiveId + "/metadata", identifier + ".xml");
 
                     // Find Abstracts from imported node
-                    XPathExpression abstractTextExpression = xpath.compile("document/publication/abstracts/abstract/text()");
-                    String abstractText = (String) abstractTextExpression.evaluate(imported, XPathConstants.STRING);
+                    XPathExpression abstractListExpression = xpath.compile("document/publication/abstracts/abstract");
+                    NodeList abstracts = (NodeList) abstractListExpression.evaluate(imported, XPathConstants.NODESET);
 
-                    FileWriter fileWriter = new FileWriter(abstractFile);
-                    fileWriter.write(abstractText);
-                    fileWriter.flush();
-                    fileWriter.close();
-                    storeRESTClient.storeFile(abstractFile, archiveId + "/abstracts", identifier + ".txt");
+                    if (abstracts != null) {
+                        StringBuilder abstractText = new StringBuilder();
+                        for (int j = 0; j < abstracts.getLength(); j++) {
+                            Node node = abstracts.item(j);
+                            if (node != null)
+                                abstractText.append(node.getTextContent()).append("\n");
+                        }
+
+                        FileWriter fileWriter = new FileWriter(abstractFile);
+                        fileWriter.write(abstractText.toString());
+                        fileWriter.flush();
+                        fileWriter.close();
+                        storeRESTClient.storeFile(abstractFile, archiveId + "/abstracts", identifier + ".txt");
+                    }
 
                 } catch (XPathExpressionException e) {
                     log.error("FetchMetadataTask.run-Fetching Metadata -XPathExpressionException ", e);
