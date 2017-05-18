@@ -5,14 +5,10 @@ import eu.openminted.content.connector.Query;
 import eu.openminted.content.connector.SearchResult;
 import eu.openminted.registry.domain.Facet;
 import eu.openminted.registry.domain.Value;
-import org.springframework.stereotype.Component;
 
 import java.io.InputStream;
 import java.util.*;
 
-/**
- * Created by antleb on 11/16/16.
- */
 //@Component
 public class MockCoreConnector implements ContentConnector {
     @Override
