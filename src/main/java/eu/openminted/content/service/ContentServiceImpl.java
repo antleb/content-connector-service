@@ -41,6 +41,7 @@ public class ContentServiceImpl implements ContentService {
         SearchResult result = new SearchResult();
         Facet sourceFacet = new Facet();
 
+        result.setTotalHits(0);
         result.setFacets(new ArrayList<>());
 
         sourceFacet.setField("source");
