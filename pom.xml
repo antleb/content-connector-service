@@ -6,7 +6,7 @@
 
     <groupId>eu.openminted</groupId>
     <artifactId>content-connector-service</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>1.0.1-SNAPSHOT</version>
     <packaging>war</packaging>
 
     <properties>
