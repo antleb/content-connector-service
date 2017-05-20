@@ -34,7 +34,7 @@ public class ContentServiceImpl implements ContentService {
 
         if (!containsIgnoreCase(query.getFacets(), "publicationType")) query.getFacets().add("publicationType");
         if (!containsIgnoreCase(query.getFacets(), "publicationYear")) query.getFacets().add("publicationYear");
-        if (!containsIgnoreCase(query.getFacets(), "rightsStmtName")) query.getFacets().add("rightsStmtName");
+//        if (!containsIgnoreCase(query.getFacets(), "rightsStmtName")) query.getFacets().add("rightsStmtName");
         if (!containsIgnoreCase(query.getFacets(), "Licence")) query.getFacets().add("Licence");
         if (!containsIgnoreCase(query.getFacets(), "documentLanguage")) query.getFacets().add("documentLanguage");
 
@@ -55,10 +55,7 @@ public class ContentServiceImpl implements ContentService {
                 value.setCount(res.getTotalHits());
 
                 sourceFacet.getValues().add(value);
-
-                result = result.merge(res);
-                result.setFrom(res.getFrom());
-                result.setTo(res.getTo());
+                result.merge(res).setFrom(res.getFrom()).setTo(res.getTo());
             }
         }
 
