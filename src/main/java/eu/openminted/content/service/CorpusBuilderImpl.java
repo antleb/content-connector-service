@@ -114,13 +114,13 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
         // metadataHeaderInfo elements
         MetadataIdentifier metadataIdentifier = new MetadataIdentifier();
+        DocumentInfo documentInfo = new DocumentInfo();
 
         metadataIdentifier.setValue(createCorpusId());
         metadataIdentifier.setMetadataIdentifierSchemeName(MetadataIdentifierSchemeNameEnum.OTHER);
         metadataHeaderInfo.setMetadataRecordIdentifier(metadataIdentifier);
 
         metadataHeaderInfo.setUserQuery(tempQuery.getKeyword());
-        metadataHeaderInfo.setMetadataLanguages(new ArrayList<>());
         corpusInfo.setDistributionInfos(new ArrayList<>());
 
         Facet sourceFacet = new Facet();
@@ -170,7 +170,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                         String code = LanguageConverter.getInstance().getLangNameToCode().get(name);
                         language.setLanguageTag(name);
                         language.setLanguageId(code);
-                        metadataHeaderInfo.getMetadataLanguages().add(language);
+                        documentInfo.getDocumentLanguages().add(language);
                     }
                 }
             }
@@ -181,17 +181,20 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                     if (value.getCount() > 0) {
                         DatasetDistributionInfo datasetDistributionInfo = new DatasetDistributionInfo();
                         RightsInfo rightsInfo = new RightsInfo();
-                        rightsInfo.setLicenceInfos(new ArrayList<>());
                         LicenceInfo licenceInfo = new LicenceInfo();
                         licenceInfo.setLicence(LicenceEnum.NON_STANDARD_LICENCE_TERMS);
                         licenceInfo.setNonStandardLicenceTermsURL(value.getValue());
 
-                        RightsStatementInfo rightsStatementInfo = new RightsStatementInfo();
-                        rightsStatementInfo.setRightsStmtURL("http://api.openaire.eu/vocabularies/dnet:access_modes");
-                        rightsStatementInfo.setRightsStmtName(RightsStmtNameConverter.convert(value.getValue()));
+                        LicenceInfos licenceInfos = new LicenceInfos();
+                        licenceInfos.getLicenceInfo().add(licenceInfo);
 
-                        rightsInfo.getLicenceInfos().add(licenceInfo);
-                        rightsInfo.setRightsStatementInfo(rightsStatementInfo);
+//                        RightsStatementInfo rightsStatementInfo = new RightsStatementInfo();
+//                        rightsStatementInfo.setRightsStmtURL("http://api.openaire.eu/vocabularies/dnet:access_modes");
+//                        rightsStatementInfo.setRightsStmtName(RightsStmtNameConverter.convert(value.getValue()));
+
+                        rightsInfo.getLicenceInfos().add(licenceInfos);
+                        rightsInfo.getRightsStatement().add(RightsStmtNameConverter.convert(value.getValue()));
+//                        rightsInfo.setRightsStatementInfo(rightsStatementInfo);
 
                         datasetDistributionInfo.setRightsInfo(rightsInfo);
                         corpusInfo.getDistributionInfos().add(datasetDistributionInfo);
@@ -216,15 +219,15 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         if (!queryString.isEmpty()) {
             String archiveID = storeRESTClient.createArchive().getResponse();
             DatasetDistributionInfo datasetDistributionInfo = new DatasetDistributionInfo();
-            List<String> dowloadaURLs = new ArrayList<>();
             List<DatasetDistributionInfo> distributionInfos = new ArrayList<>();
             List<DistributionMediumEnum> distributionMediums = new ArrayList<>();
 
-            dowloadaURLs.add(registryHost + "/omtd-registry/request/corpus/download?archiveId=" + archiveID);
             distributionMediums.add(DistributionMediumEnum.DOWNLOADABLE);
-
-            datasetDistributionInfo.setDownloadURLs(dowloadaURLs);
             datasetDistributionInfo.setDistributionMediums(distributionMediums);
+
+//            List<String> dowloadaURLs = new ArrayList<>();
+//            dowloadaURLs.add(registryHost + "/omtd-registry/request/corpus/download?archiveId=" + archiveID);
+            datasetDistributionInfo.setDownloadURL(registryHost + "/omtd-registry/request/corpus/download?archiveId=" + archiveID);
 
             distributionInfos.add(datasetDistributionInfo);
             corpusInfo.setDistributionInfos(distributionInfos);
