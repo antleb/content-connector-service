@@ -34,12 +34,13 @@ public class ContentServiceController {
     public SearchResult browse(@RequestParam(value = "facets") String facets) {
 
         List<String> facetList = Arrays.asList(facets.split(","));
-        return contentService.search(new Query("*:*", new HashMap<>(), facetList, 0, 10));
+        return contentService.search(new Query("", new HashMap<>(), facetList, 0, 10));
     }
 
     @RequestMapping(value = "/content/browse", method = RequestMethod.POST, headers = "Accept=application/json")
     public SearchResult browse(@RequestBody Query query) {
 
+        if (query == null) throw new NullPointerException("Query should not be null");
         return contentService.search(query);
     }
 
@@ -54,6 +55,7 @@ public class ContentServiceController {
     @RequestMapping(value = "/corpus/prepare", method = RequestMethod.POST, headers = "Accept=application/json")
     public Corpus prepare(@RequestBody Query query) {
 
+        if (query == null) throw new NullPointerException("Query should not be null");
         Corpus corpus = corpusBuilder.prepareCorpus(query);
         if (corpus != null) {
             ContactInfo contactInfo = new ContactInfo();

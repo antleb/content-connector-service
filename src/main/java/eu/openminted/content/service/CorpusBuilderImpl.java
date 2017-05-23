@@ -88,14 +88,6 @@ public class CorpusBuilderImpl implements CorpusBuilder {
     @Override
     public Corpus prepareCorpus(Query query) {
 
-        if (query == null) {
-            query = new Query("*:*", new HashMap<>(), new ArrayList<>(), 0, 1);
-        } else if (query.getKeyword() == null || query.getKeyword().isEmpty()) {
-            query.setKeyword("*:*");
-        }
-        // Setting query rows up to 500 for improving speed between fetching and importing metadata
-        query.setTo(500);
-
         // if registryHost ends with '/' remove it
         registryHost = registryHost.replaceAll("/$", "");
 

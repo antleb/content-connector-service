@@ -21,12 +21,6 @@ public class ContentServiceImpl implements ContentService {
     @Override
     public SearchResult search(Query query) {
 
-        if (query == null) {
-            query = new Query("*:*", new HashMap<>(), new ArrayList<>(), 0, 1);
-        } else if (query.getKeyword() == null || query.getKeyword().isEmpty()) {
-            query.setKeyword("*:*");
-        }
-
         query.setFrom(0);
         query.setTo(1);
 
