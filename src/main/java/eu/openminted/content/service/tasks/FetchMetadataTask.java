@@ -86,9 +86,17 @@ public class FetchMetadataTask implements Runnable {
             @Override
             public void run() {
                 CorpusBuilderInfoModel corpusBuilderInfoModel = corpusBuilderInfoDao.find(corpusId);
-                if (corpusBuilderInfoModel.getStatus().equalsIgnoreCase(CorpusStatus.CANCELED.toString())) {
+                if (corpusBuilderInfoModel != null
+                        && corpusBuilderInfoModel.getStatus().equalsIgnoreCase(CorpusStatus.CANCELED.toString())) {
                     IOUtils.closeQuietly(inputStream);
                     isInterrupted = true;
+                }
+
+                if (isInterrupted
+                    || (corpusBuilderInfoModel != null
+                        && corpusBuilderInfoModel.getStatus().equalsIgnoreCase(CorpusStatus.CREATED.toString()))
+                    || corpusBuilderInfoModel == null) {
+                    this.cancel();
                 }
             }
         };
@@ -162,7 +170,6 @@ public class FetchMetadataTask implements Runnable {
             IOUtils.closeQuietly(inputStream);
 
             for (String identifier : identifiers) {
-                System.out.println("\n\n" + identifier);
                 if (isInterrupted) break;
                 try {
                     InputStream fullTextInputStream = cacheClient.getDocument(connector, identifier);

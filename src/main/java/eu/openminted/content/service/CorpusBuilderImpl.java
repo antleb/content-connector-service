@@ -2,12 +2,12 @@ package eu.openminted.content.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import eu.openminted.content.connector.*;
 import eu.openminted.content.service.dao.CorpusBuilderInfoDao;
 import eu.openminted.content.service.extensions.CorpusBuilderExecutionQueueConsumer;
 import eu.openminted.content.service.extensions.JMSConsumer;
 import eu.openminted.content.service.extensions.JMSProducer;
 import eu.openminted.content.service.model.CorpusBuilderInfoModel;
-import eu.openminted.content.connector.*;
 import eu.openminted.corpus.CorpusBuilder;
 import eu.openminted.corpus.CorpusStatus;
 import eu.openminted.registry.domain.*;
@@ -114,7 +114,6 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
         // metadataHeaderInfo elements
         MetadataIdentifier metadataIdentifier = new MetadataIdentifier();
-        DocumentInfo documentInfo = new DocumentInfo();
 
         metadataIdentifier.setValue(createCorpusId());
         metadataIdentifier.setMetadataIdentifierSchemeName(MetadataIdentifierSchemeNameEnum.OTHER);
@@ -156,21 +155,38 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         for (Facet facet : result.getFacets()) {
             // language
             if (facet.getField().equalsIgnoreCase("documentLanguage")) {
+                CorpusTextPartInfo corpusTextPartInfo = new CorpusTextPartInfo();
+                CorpusMediaPartsType corpusMediaPartsType = new CorpusMediaPartsType();
+                RawCorpusInfo rawCorpusInfo = new RawCorpusInfo();
+                CorpusSubtypeSpecificInfo corpusSubtypeSpecificInfo = new CorpusSubtypeSpecificInfo();
+
+                rawCorpusInfo.setCorpusMediaPartsType(corpusMediaPartsType);
+                corpusSubtypeSpecificInfo.setRawCorpusInfo(rawCorpusInfo);
+                corpusInfo.setCorpusSubtypeSpecificInfo(corpusSubtypeSpecificInfo);
+
+                corpusInfo.getCorpusSubtypeSpecificInfo().getRawCorpusInfo().getCorpusMediaPartsType().getCorpusTextParts().add(corpusTextPartInfo);
+
+
                 for (Value value : facet.getValues()) {
                     if (value.getCount() > 0) {
                         Language language = new Language();
+                        LanguageInfo languageInfo = new LanguageInfo();
+
                         String name = value.getValue();
-                        if (name.contains("Greek")) {
-                            if (name.equalsIgnoreCase(ancientGreek)) {
-                                name = ancientGreek;
-                            } else {
-                                name = modernGreek;
-                            }
-                        }
+//                        if (name.contains("Greek")) {
+//                            if (name.equalsIgnoreCase(ancientGreek)) {
+//                                name = ancientGreek;
+//                            } else {
+//                                name = modernGreek;
+//                            }
+//                        }
+
                         String code = LanguageConverter.getInstance().getLangNameToCode().get(name);
                         language.setLanguageTag(name);
                         language.setLanguageId(code);
-                        documentInfo.getDocumentLanguages().add(language);
+                        languageInfo.setLanguage(language);
+
+                        corpusTextPartInfo.getLanguages().add(languageInfo);
                     }
                 }
             }

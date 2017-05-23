@@ -92,15 +92,19 @@ public class CorpusBuilderExecutionQueueConsumer {
                                 }
 
                                 for (Future<?> future : futures) {
-                                    future.get();
+                                    try {
+                                        future.get();
+                                    } catch (InterruptedException e) {
+
+                                        log.info("Thread Interrupted or error in execution");
+                                        corpusBuilderInfoModel.setStatus(CorpusStatus.CANCELED.toString());
+                                        corpusBuilderInfoDao.update(corpusBuilderInfoModel.getId(), "status", CorpusStatus.CANCELED);
+
+                                    } catch (Exception e) {
+                                        log.error("CorpusBuilderImpl.buildCorpus - Inner exception at the future.get method", e);
+                                    }
                                 }
-                            } catch (InterruptedException e) {
-
-                                log.info("Thread Interrupted or error in execution");
-                                corpusBuilderInfoModel.setStatus(CorpusStatus.CANCELED.toString());
-                                corpusBuilderInfoDao.update(corpusBuilderInfoModel.getId(), "status", CorpusStatus.CANCELED);
-
-                            } catch (Exception ex) {
+                            }  catch (Exception ex) {
 
                                 log.error("CorpusBuilderImpl.buildCorpus", ex);
 //                                if (corpusBuilderInfoModel != null) {
