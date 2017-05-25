@@ -141,8 +141,6 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         }
 
         result.getFacets().add(sourceFacet);
-        String ancientGreek = "Greek, Ancient (to 1453)";
-        String modernGreek = "Greek, Modern (1453-)";
 
         for (Facet facet : result.getFacets()) {
             // language
@@ -165,13 +163,9 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                         LanguageInfo languageInfo = new LanguageInfo();
 
                         String name = value.getValue();
-//                        if (name.contains("Greek")) {
-//                            if (name.equalsIgnoreCase(ancientGreek)) {
-//                                name = ancientGreek;
-//                            } else {
-//                                name = modernGreek;
-//                            }
-//                        }
+                        if (LanguageConverter.getInstance().getOpenaireToOMTDName().containsKey(name)) {
+                            name = LanguageConverter.getInstance().getOpenaireToOMTDName().get(name);
+                        }
 
                         String code = LanguageConverter.getInstance().getLangNameToCode().get(name);
                         language.setLanguageTag(name);
