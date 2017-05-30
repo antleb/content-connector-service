@@ -52,7 +52,7 @@ public class CacheClientImpl implements CacheClient {
         cacheDataIDProvider = new CacheDataIDMD5();
     }
 
-    public boolean setDocument(ContentConnector connector, String identifier) {
+    public boolean setDocument(ContentConnector connector, String identifier, String hashKey) {
         try {
             InputStream inputStream = connector.downloadFullText(identifier);
 
@@ -61,9 +61,7 @@ public class CacheClientImpl implements CacheClient {
                 IOUtils.copy(inputStream, outputStream);
 
                 Data data = new Data(outputStream.toByteArray());
-                String documentId = cacheDataIDProvider.getID(identifier.getBytes());
-
-                return myCache.putData(documentId, data);
+                return myCache.putData(hashKey, data);
             }
 
         } catch (IOException e) {
@@ -78,7 +76,7 @@ public class CacheClientImpl implements CacheClient {
             boolean existsInCache = myCache.contains(hashkey);
             if (!existsInCache) {
                 log.debug("document not found... Inserting document now!");
-                existsInCache = setDocument(connector, identifier);
+                existsInCache = setDocument(connector, identifier, hashkey);
             }
 
             if (existsInCache) {
