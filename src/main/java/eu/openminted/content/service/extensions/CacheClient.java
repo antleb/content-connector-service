@@ -6,5 +6,5 @@ import java.io.InputStream;
 
 public interface CacheClient {
     boolean setDocument(ContentConnector connector, String identifier);
-    InputStream getDocument(ContentConnector connector, String identifier);
+    InputStream getDocument(ContentConnector connector, String identifier, String hashKey);
 }

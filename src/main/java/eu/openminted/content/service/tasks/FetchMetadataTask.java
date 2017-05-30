@@ -24,10 +24,7 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import javax.xml.xpath.*;
 import java.io.*;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.*;
 
 public class FetchMetadataTask implements Runnable {
     private static Logger log = Logger.getLogger(FetchMetadataTask.class.getName());
@@ -72,7 +69,7 @@ public class FetchMetadataTask implements Runnable {
         File metadataFile = new File(archive.getPath() + "/" + archiveId + ".xml");
         File downloadFile = new File(archive.getPath() + "/" + archiveId + ".pdf");
         File abstractFile = new File(archive.getPath() + "/" + archiveId + ".txt");
-        List<String> identifiers = new ArrayList<>();
+        Map<String, List<String>> identifiers = new HashMap<>();
 
         DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
         XPath xpath = XPathFactory.newInstance().newXPath();
@@ -93,9 +90,9 @@ public class FetchMetadataTask implements Runnable {
                 }
 
                 if (isInterrupted
-                    || (corpusBuilderInfoModel != null
+                        || (corpusBuilderInfoModel != null
                         && corpusBuilderInfoModel.getStatus().equalsIgnoreCase(CorpusStatus.CREATED.toString()))
-                    || corpusBuilderInfoModel == null) {
+                        || corpusBuilderInfoModel == null) {
                     this.cancel();
                 }
             }
@@ -135,7 +132,7 @@ public class FetchMetadataTask implements Runnable {
                         log.info("MetadataDocument Identifier is empty or null. Skipping current document.");
                         continue;
                     } else {
-                        identifiers.add(identifier);
+                        identifiers.put(identifier, new ArrayList<>());
                     }
 
                     writeToFile(imported, metadataFile);
@@ -157,9 +154,19 @@ public class FetchMetadataTask implements Runnable {
                         fileWriter.write(abstractText.toString());
                         fileWriter.flush();
                         fileWriter.close();
-                        storeRESTClient.storeFile(abstractFile, archiveId + "/abstracts", identifier + ".txt");
+                        storeRESTClient.storeFile(abstractFile, archiveId + "/abstract", identifier + ".txt");
                     }
 
+                    // Find hashkeys from imported node
+                    XPathExpression distributionListExpression = xpath.compile("document/publication/distributions/documentDistributionInfo/hashkey");
+                    NodeList hashkeys = (NodeList) distributionListExpression.evaluate(imported, XPathConstants.NODESET);
+
+                    for (int j = 0; j < hashkeys.getLength(); j++) {
+                        Node hashkey = hashkeys.item(j);
+                        if (hashkey != null) {
+                            identifiers.get(identifier).add(hashkey.getTextContent());
+                        }
+                    }
                 } catch (XPathExpressionException e) {
                     log.error("FetchMetadataTask.run-Fetching Metadata -XPathExpressionException ", e);
                 } catch (IOException e) {
@@ -169,23 +176,28 @@ public class FetchMetadataTask implements Runnable {
 
             IOUtils.closeQuietly(inputStream);
 
-            for (String identifier : identifiers) {
+            for (String identifier : identifiers.keySet()) {
                 if (isInterrupted) break;
                 try {
-                    InputStream fullTextInputStream = cacheClient.getDocument(connector, identifier);
-                    FileOutputStream outputStream = null;
-                    if (fullTextInputStream != null) {
 
-                        outputStream = new FileOutputStream(downloadFile, false);
-                        IOUtils.copy(fullTextInputStream, outputStream);
-                        storeRESTClient.storeFile(downloadFile, archiveId + "/documents", identifier + ".pdf");
+                    for (String hashKey : identifiers.get(identifier)) {
+                        if (hashKey != null && !hashKey.isEmpty()) {
+                            InputStream fullTextInputStream = cacheClient.getDocument(connector, identifier, hashKey);
+                            FileOutputStream outputStream = null;
+                            if (fullTextInputStream != null) {
+
+                                outputStream = new FileOutputStream(downloadFile, false);
+                                IOUtils.copy(fullTextInputStream, outputStream);
+                                storeRESTClient.storeFile(downloadFile, archiveId + "/fulltext", identifier + ".pdf");
+                            }
+                            IOUtils.closeQuietly(fullTextInputStream);
+                            IOUtils.closeQuietly(outputStream);
+                        }
                     }
-                    IOUtils.closeQuietly(fullTextInputStream);
-                    IOUtils.closeQuietly(outputStream);
                 } catch (FileNotFoundException e) {
-                    log.error("FetchMetadataTask.run- Downloading document -FileNotFoundException ", e);
+                    log.error("FetchMetadataTask.run- Downloading fulltext -FileNotFoundException ", e);
                 } catch (IOException e) {
-                    log.error("FetchMetadataTask.run- Downloading document -IOException ", e);
+                    log.error("FetchMetadataTask.run- Downloading fulltext -IOException ", e);
                 }
             }
         }

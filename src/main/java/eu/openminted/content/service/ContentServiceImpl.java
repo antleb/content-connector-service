@@ -40,8 +40,22 @@ public class ContentServiceImpl implements ContentService {
         sourceFacet.setLabel("Content Source");
         sourceFacet.setValues(new ArrayList<>());
 
+        // retrieve connectors from query
+        List<String> connectors = new ArrayList<>();
+        if (query.getParams().get("source") != null
+                && query.getParams().get("source").size() > 0) {
+            connectors.addAll(query.getParams().get("source"));
+        }
+
+        // remove field query "source" because this is a custom OMTD field
+        query.getParams().remove("source");
+
+
         if (contentConnectors != null) {
             for (ContentConnector connector : contentConnectors) {
+
+                if (connectors.size() > 0 && !connectors.contains(connector.getSourceName())) continue;
+
                 SearchResult res = connector.search(query);
                 Value value = new Value();
 

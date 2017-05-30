@@ -63,8 +63,6 @@ public class CacheClientImpl implements CacheClient {
                 Data data = new Data(outputStream.toByteArray());
                 String documentId = cacheDataIDProvider.getID(identifier.getBytes());
 
-                // When index is ready documentId will be provided
-//                String documentId = cacheDataIDProvider.getID(data.getBytes());
                 return myCache.putData(documentId, data);
             }
 
@@ -74,11 +72,10 @@ public class CacheClientImpl implements CacheClient {
         return false;
     }
 
-    public InputStream getDocument(ContentConnector connector, String identifier) {
+    public InputStream getDocument(ContentConnector connector, String identifier, String hashkey) {
         InputStream inputStream = null;
         try {
-            String documentId = cacheDataIDProvider.getID(identifier.getBytes());
-            boolean existsInCache = myCache.contains(documentId);
+            boolean existsInCache = myCache.contains(hashkey);
             if (!existsInCache) {
                 log.debug("document not found... Inserting document now!");
                 existsInCache = setDocument(connector, identifier);
@@ -86,7 +83,7 @@ public class CacheClientImpl implements CacheClient {
 
             if (existsInCache) {
                 log.debug("document found... Retrieving document now!");
-                Data retrievedData = myCache.getData(documentId);
+                Data retrievedData = myCache.getData(hashkey);
                 if (retrievedData != null) {
                     inputStream = new ByteArrayInputStream(retrievedData.getBytes());
                 }

@@ -77,11 +77,12 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             }
         }).start();
 
-        new Thread(()->consumer.listen()).start();
+        new Thread(() -> consumer.listen()).start();
     }
 
     /**
-     *   Method for preparing the corpus building process for a new corpus
+     * Method for preparing the corpus building process for a new corpus
+     *
      * @param query the query as inserted in the prepare method of the controller
      * @return the Coprus that the user is building
      */
@@ -121,6 +122,16 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         sourceFacet.setLabel("Content Source");
         sourceFacet.setValues(new ArrayList<>());
 
+        // retrieve connectors from query
+        List<String> connectors = new ArrayList<>();
+        if (query.getParams().get("source") != null
+                && query.getParams().get("source").size() > 0) {
+            connectors.addAll(query.getParams().get("source"));
+        }
+
+        // remove field query "source" because this is an custom OMTD field
+        query.getParams().remove("source");
+
         if (contentConnectors != null) {
 
             tempQuery.getFacets().add("licence");
@@ -128,6 +139,9 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             tempQuery.getFacets().add("documentLanguage");
 
             for (ContentConnector connector : contentConnectors) {
+
+                if (connectors.size() > 0 && !connectors.contains(connector.getSourceName())) continue;
+
                 SearchResult res = connector.search(tempQuery);
                 Value value = new Value();
 
@@ -234,17 +248,17 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             distributionInfos.add(datasetDistributionInfo);
             corpusInfo.setDistributionInfos(distributionInfos);
             storeRESTClient.createSubArchive(archiveID, "metadata");
-            storeRESTClient.createSubArchive(archiveID, "documents");
-            storeRESTClient.createSubArchive(archiveID, "abstracts");
+            storeRESTClient.createSubArchive(archiveID, "fulltext");
+            storeRESTClient.createSubArchive(archiveID, "abstract");
             corpusBuilderInfoDao.insert(metadataIdentifier.getValue(), queryString, CorpusStatus.SUBMITTED, archiveID);
 
             final String prepareMessage = "Prepare corpus Query: " + queryString;
-            new Thread(()->producer.send(prepareMessage)).start();
-            new Thread(()->producer.send("Prepare corpus CorpusID: " + metadataIdentifier.getValue())).start();
-            new Thread(()->producer.send("Prepare corpus ArchiveID: " + archiveID)).start();
-            new Thread(()->producer.send("Prepare corpus SubarchiveID: " + archiveID + "/metadata")).start();
-            new Thread(()->producer.send("Prepare corpus SubarchiveID: " + archiveID + "/documents")).start();
-            new Thread(()->producer.send("Prepare corpus SubarchiveID: " + archiveID + "/abstracts")).start();
+            new Thread(() -> producer.send(prepareMessage)).start();
+            new Thread(() -> producer.send("Prepare corpus CorpusID: " + metadataIdentifier.getValue())).start();
+            new Thread(() -> producer.send("Prepare corpus ArchiveID: " + archiveID)).start();
+            new Thread(() -> producer.send("Prepare corpus SubarchiveID: " + archiveID + "/metadata")).start();
+            new Thread(() -> producer.send("Prepare corpus SubarchiveID: " + archiveID + "/fulltext")).start();
+            new Thread(() -> producer.send("Prepare corpus SubarchiveID: " + archiveID + "/abstract")).start();
         }
 
         return corpusMetadata;
@@ -255,6 +269,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
      * Adds the corpusId to the execution queue
      * and the CorpusBuilderExecutionQueueConsumer
      * is responsible to create the new corpus
+     *
      * @param corpusMetadata the Corpus as built from the user
      */
     @Override
@@ -262,12 +277,13 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
         if (contentConnectors != null) {
             corpora.add(corpusMetadata);
-            new Thread(()->producer.send("Corpus Build: Sending corpus with id " + corpusMetadata.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue() + " to corpora queue for execution")).start();
+            new Thread(() -> producer.send("Corpus Build: Sending corpus with id " + corpusMetadata.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue() + " to corpora queue for execution")).start();
         }
     }
 
     /**
      * Returns the status of the building process for a particular corpusId
+     *
      * @param s the corpusId
      * @return the status of the building process in the form of the CorpusStatus enum
      */
@@ -278,7 +294,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
         try {
             corpusBuilderInfoModel = corpusBuilderInfoDao.find(s);
-            new Thread(()->producer.send("Corpus " + s + " status: " + corpusBuilderInfoModel.getStatus())).start();
+            new Thread(() -> producer.send("Corpus " + s + " status: " + corpusBuilderInfoModel.getStatus())).start();
             return CorpusStatus.valueOf(corpusBuilderInfoModel.getStatus());
         } catch (EmptyResultDataAccessException e) {
 
@@ -292,6 +308,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
     /**
      * Cancels the building process for a particular corpusId
+     *
      * @param s the corpusId
      */
     @Override
@@ -313,6 +330,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
     /**
      * Deletes the corpus for a particular corpusId
+     *
      * @param s the corpusId
      */
     @Override
@@ -322,7 +340,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             CorpusBuilderInfoModel model = corpusBuilderInfoDao.find(s);
             corpusBuilderInfoDao.update(s, "status", CorpusStatus.DELETED);
             storeRESTClient.deleteArchive(model.getArchiveId());
-            new Thread(()->producer.send("Corpus " + s + " deleted")).start();
+            new Thread(() -> producer.send("Corpus " + s + " deleted")).start();
             log.info(corpusBuilderInfoDao.find(s));
         } catch (Exception e) {
             log.error("CorpusBuilderImpl.deleteCorpus", e);
@@ -331,6 +349,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
     /**
      * Method that creates the corpusId
+     *
      * @return a String with the new corpusId
      */
     private String createCorpusId() {
