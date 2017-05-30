@@ -124,13 +124,20 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
         // retrieve connectors from query
         List<String> connectors = new ArrayList<>();
-        if (query.getParams().get("source") != null
+        if (query.getParams().containsKey("source")
+                && query.getParams().get("source") != null
                 && query.getParams().get("source").size() > 0) {
             connectors.addAll(query.getParams().get("source"));
         }
 
         // remove field query "source" because this is an custom OMTD field
-        query.getParams().remove("source");
+        if (query.getParams().containsKey("source"))
+            query.getParams().remove("source");
+        // also remove documentType (for the time being
+        // it is always fullText and the result
+        // will be the same as well)
+        if (query.getParams().containsKey("documentType"))
+            query.getParams().remove("documentType");
 
         if (contentConnectors != null) {
 
