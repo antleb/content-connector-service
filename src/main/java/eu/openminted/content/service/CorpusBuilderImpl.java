@@ -94,6 +94,10 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
         Corpus corpusMetadata = new Corpus();
         String queryString = "";
+        String descriptionString = "A corpus generated automatically by [user_name] " +
+                "on [creation_date] via OpenMinTeD services. " +
+                "The corpus includes [number_of] publications from [source] (in ([language]) and [domain])";
+        StringBuilder sourcesBuilder = new StringBuilder();
 
         // tempQuery is used to import necessary information about the metadata and include them into the new corpus
         Query tempQuery = new Query(query.getKeyword(), query.getParams(), new ArrayList<>(), 0, 1);
@@ -104,6 +108,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         // corpusInfo elements
         IdentificationInfo identificationInfo = new IdentificationInfo();
         identificationInfo.setResourceNames(new ArrayList<>());
+        corpusInfo.setIdentificationInfo(identificationInfo);
 
         // metadataHeaderInfo elements
         MetadataIdentifier metadataIdentifier = new MetadataIdentifier();
@@ -158,7 +163,9 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                 sourceFacet.getValues().add(value);
 
                 result.merge(res);
+                sourcesBuilder.append(connector.getSourceName()).append(" and ");
             }
+            sourcesBuilder = sourcesBuilder.delete(sourcesBuilder.lastIndexOf(" and "), sourcesBuilder.length());
         }
 
         result.getFacets().add(sourceFacet);
@@ -177,7 +184,6 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
                 corpusInfo.getCorpusSubtypeSpecificInfo().getRawCorpusInfo().getCorpusMediaPartsType().getCorpusTextParts().add(corpusTextPartInfo);
 
-
                 for (Value value : facet.getValues()) {
                     if (value.getCount() > 0) {
                         Language language = new Language();
@@ -194,6 +200,24 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                         languageInfo.setLanguage(language);
 
                         corpusTextPartInfo.getLanguages().add(languageInfo);
+
+                        Description description = new Description();
+                        description.setLang("en");
+                        String currentDescription = descriptionString;
+
+                        currentDescription = currentDescription.replaceAll("\\[creation_date\\]", new java.util.Date().toString());
+                        currentDescription = currentDescription.replaceAll("\\[source\\]", sourcesBuilder.toString());
+                        currentDescription = currentDescription.replaceAll("\\[number_of\\]", "" + value.getCount());
+                        currentDescription = currentDescription.replaceAll("\\[language\\]", "" + language.getLanguageTag());
+                        currentDescription = currentDescription.replaceAll("\\[domain\\]", "" + language.getLanguageId());
+
+                        description.setValue(currentDescription);
+
+                        corpusInfo.getIdentificationInfo().getDescriptions().add(description);
+                        SizeInfo sizeInfo = new SizeInfo();
+                        sizeInfo.setSize(value.getCount() + "");
+                        sizeInfo.setSizeUnit(SizeUnitEnum.TEXTS);
+                        corpusTextPartInfo.getSizes().add(sizeInfo);
                     }
                 }
             }
@@ -226,7 +250,11 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             }
         }
 
-        corpusInfo.setIdentificationInfo(identificationInfo);
+
+        ResourceIdentifier resourceIdentifier = new ResourceIdentifier();
+        resourceIdentifier.setValue(UUID.randomUUID().toString());
+        identificationInfo.getResourceIdentifiers().add(resourceIdentifier);
+
 
         corpusMetadata.setCorpusInfo(corpusInfo);
         corpusMetadata.setMetadataHeaderInfo(metadataHeaderInfo);
@@ -273,7 +301,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
     /**
      * Method for building the corpus metadata.
-     * Adds the corpusId to the execution queue
+     * Adds the corpusId to the execution queuere
      * and the CorpusBuilderExecutionQueueConsumer
      * is responsible to create the new corpus
      *
