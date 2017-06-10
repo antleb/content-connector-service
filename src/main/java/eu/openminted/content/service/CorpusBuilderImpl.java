@@ -271,14 +271,14 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             String archiveID = storeRESTClient.createArchive().getResponse();
             DatasetDistributionInfo datasetDistributionInfo = new DatasetDistributionInfo();
             List<DatasetDistributionInfo> distributionInfos = new ArrayList<>();
-            List<DistributionMediumEnum> distributionMediums = new ArrayList<>();
 
-            distributionMediums.add(DistributionMediumEnum.DOWNLOADABLE);
-            datasetDistributionInfo.setDistributionMediums(distributionMediums);
+            DistributionLoc distributionLoc = new DistributionLoc();
+            distributionLoc.setDistributionMedium(DistributionMediumEnum.DOWNLOADABLE);
 
 //            List<String> dowloadaURLs = new ArrayList<>();
 //            dowloadaURLs.add(registryHost + "/omtd-registry/request/corpus/download?archiveId=" + archiveID);
-            datasetDistributionInfo.setDownloadURL(registryHost + "/omtd-registry/request/corpus/download?archiveId=" + archiveID);
+            distributionLoc.setDistributionURL(registryHost + "/omtd-registry/request/corpus/download?archiveId=" + archiveID);
+            datasetDistributionInfo.setDistributionLoc(distributionLoc);
 
             distributionInfos.add(datasetDistributionInfo);
             corpusInfo.setDistributionInfos(distributionInfos);
