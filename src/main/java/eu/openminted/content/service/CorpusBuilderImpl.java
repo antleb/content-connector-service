@@ -26,6 +26,7 @@ import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.stream.Collectors;
 
 @Component
 @ComponentScan("eu.openminted.content")
@@ -145,13 +146,6 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         if (query.getParams().containsKey("documentType"))
             query.getParams().remove("documentType");
 
-        resourceNameUsageDescription = resourceNameUsageDescription.replaceAll("\\[connectors\\]", connectors.toString().replaceAll("\\[\\]", ""));
-        ResourceName resourceName = new ResourceName();
-        resourceName.setLang("en");
-        resourceName.setValue(resourceNameUsageDescription);
-        identificationInfo.getResourceNames().add(resourceName);
-        corpusInfo.setIdentificationInfo(identificationInfo);
-
         if (contentConnectors != null) {
 
             tempQuery.getFacets().add("licence");
@@ -159,7 +153,6 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             tempQuery.getFacets().add("documentLanguage");
 
             for (ContentConnector connector : contentConnectors) {
-
                 if (connectors.size() > 0 && !connectors.contains(connector.getSourceName())) continue;
 
                 SearchResult res = connector.search(tempQuery);
@@ -174,6 +167,18 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                 sourcesBuilder.append(connector.getSourceName()).append(" and ");
             }
             sourcesBuilder = sourcesBuilder.delete(sourcesBuilder.lastIndexOf(" and "), sourcesBuilder.length());
+
+            String connectorsToString = contentConnectors.stream()
+                    .map(ContentConnector::getSourceName)
+                    .collect(Collectors.toList()).toString()
+                    .replaceAll("\\[|\\]", "");
+
+            resourceNameUsageDescription = resourceNameUsageDescription.replaceAll("\\[connectors\\]", connectorsToString);
+            ResourceName resourceName = new ResourceName();
+            resourceName.setLang("en");
+            resourceName.setValue(resourceNameUsageDescription);
+            identificationInfo.getResourceNames().add(resourceName);
+            corpusInfo.setIdentificationInfo(identificationInfo);
         }
 
         result.getFacets().add(sourceFacet);
@@ -211,7 +216,6 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                 if (facet.getValues().size() > 0) {
                     corpusTextPartInfo.setLingualityInfo(lingualityInfo);
                 }
-
 
                 for (Value value : facet.getValues()) {
                     if (value.getCount() > 0) {
