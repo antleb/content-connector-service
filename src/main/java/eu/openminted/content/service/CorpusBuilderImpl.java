@@ -96,7 +96,9 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         String queryString = "";
         String descriptionString = "A corpus generated automatically by [user_name] " +
                 "on [creation_date] via OpenMinTeD services. " +
-                "The corpus includes [number_of] publications from [source] (in ([language]) and [domain])";
+                "The corpus includes [number_of] publications from [source] in [language]";
+
+        String resourceNameUsageDescription = "OpenMinTeD subset of [connectors] publications";
         StringBuilder sourcesBuilder = new StringBuilder();
 
         // tempQuery is used to import necessary information about the metadata and include them into the new corpus
@@ -108,7 +110,6 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         // corpusInfo elements
         IdentificationInfo identificationInfo = new IdentificationInfo();
         identificationInfo.setResourceNames(new ArrayList<>());
-        corpusInfo.setIdentificationInfo(identificationInfo);
 
         // metadataHeaderInfo elements
         MetadataIdentifier metadataIdentifier = new MetadataIdentifier();
@@ -143,6 +144,13 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         // will be the same as well)
         if (query.getParams().containsKey("documentType"))
             query.getParams().remove("documentType");
+
+        resourceNameUsageDescription = resourceNameUsageDescription.replaceAll("\\[connectors\\]", connectors.toString().replaceAll("\\[\\]", ""));
+        ResourceName resourceName = new ResourceName();
+        resourceName.setLang("en");
+        resourceName.setValue(resourceNameUsageDescription);
+        identificationInfo.getResourceNames().add(resourceName);
+        corpusInfo.setIdentificationInfo(identificationInfo);
 
         if (contentConnectors != null) {
 
@@ -184,6 +192,27 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
                 corpusInfo.getCorpusSubtypeSpecificInfo().getRawCorpusInfo().getCorpusMediaPartsType().getCorpusTextParts().add(corpusTextPartInfo);
 
+                LingualityInfo lingualityInfo = new LingualityInfo();
+
+                switch (facet.getValues().size()) {
+                    case 1:
+                        lingualityInfo.setLingualityType(LingualityTypeEnum.MONOLINGUAL);
+                        break;
+                    case 2:
+                        lingualityInfo.setLingualityType(LingualityTypeEnum.BILINGUAL);
+                        break;
+                    case 0:
+                        break;
+                    default:
+                        lingualityInfo.setLingualityType(LingualityTypeEnum.MULTILINGUAL);
+                        break;
+                }
+
+                if (facet.getValues().size() > 0) {
+                    corpusTextPartInfo.setLingualityInfo(lingualityInfo);
+                }
+
+
                 for (Value value : facet.getValues()) {
                     if (value.getCount() > 0) {
                         Language language = new Language();
@@ -198,6 +227,10 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                         language.setLanguageTag(name);
                         language.setLanguageId(code);
                         languageInfo.setLanguage(language);
+                        SizeInfo languageSizeInfo = new SizeInfo();
+                        languageSizeInfo.setSize(String.valueOf(value.getCount()));
+                        languageSizeInfo.setSizeUnit(SizeUnitEnum.TEXTS);
+                        languageInfo.setSizePerLanguage(languageSizeInfo);
 
                         corpusTextPartInfo.getLanguages().add(languageInfo);
 
@@ -209,13 +242,12 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                         currentDescription = currentDescription.replaceAll("\\[source\\]", sourcesBuilder.toString());
                         currentDescription = currentDescription.replaceAll("\\[number_of\\]", "" + value.getCount());
                         currentDescription = currentDescription.replaceAll("\\[language\\]", "" + language.getLanguageTag());
-                        currentDescription = currentDescription.replaceAll("\\[domain\\]", "" + language.getLanguageId());
 
                         description.setValue(currentDescription);
 
                         corpusInfo.getIdentificationInfo().getDescriptions().add(description);
                         SizeInfo sizeInfo = new SizeInfo();
-                        sizeInfo.setSize(value.getCount() + "");
+                        sizeInfo.setSize(String.valueOf(value.getCount()));
                         sizeInfo.setSizeUnit(SizeUnitEnum.TEXTS);
                         corpusTextPartInfo.getSizes().add(sizeInfo);
                     }
