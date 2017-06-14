@@ -252,6 +252,10 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                         corpusInfo.getIdentificationInfo().getDescriptions().add(description);
                     }
                 }
+                SizeInfo sizeInfo = new SizeInfo();
+                sizeInfo.setSize(String.valueOf(result.getTotalHits()));
+                sizeInfo.setSizeUnit(SizeUnitEnum.TEXTS);
+                corpusTextPartInfo.getSizes().add(sizeInfo);
             }
 
             // licence
@@ -276,30 +280,19 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 //                        rightsInfo.setRightsStatementInfo(rightsStatementInfo);
 
                         datasetDistributionInfo.setRightsInfo(rightsInfo);
+                        SizeInfo sizeInfo = new SizeInfo();
+                        sizeInfo.setSize(String.valueOf(value.getCount()));
+                        sizeInfo.setSizeUnit(SizeUnitEnum.TEXTS);
+                        datasetDistributionInfo.getSizes().add(sizeInfo);
                         corpusInfo.getDistributionInfos().add(datasetDistributionInfo);
                     }
                 }
             }
         }
 
-
-        SizeInfo sizeInfo = new SizeInfo();
-        sizeInfo.setSize(String.valueOf(result.getTotalHits()));
-        sizeInfo.setSizeUnit(SizeUnitEnum.TEXTS);
-
-        if (corpusInfo.getDistributionInfos().size() == 0) {
-            DatasetDistributionInfo datasetDistributionInfo = new DatasetDistributionInfo();
-            corpusInfo.getDistributionInfos().add(datasetDistributionInfo);
-        }
-
-        for (DatasetDistributionInfo distributionInfo : corpusInfo.getDistributionInfos()) {
-            distributionInfo.getSizes().add(sizeInfo);
-        }
-
         ResourceIdentifier resourceIdentifier = new ResourceIdentifier();
         resourceIdentifier.setValue(UUID.randomUUID().toString());
         identificationInfo.getResourceIdentifiers().add(resourceIdentifier);
-
 
         corpusMetadata.setCorpusInfo(corpusInfo);
         corpusMetadata.setMetadataHeaderInfo(metadataHeaderInfo);
