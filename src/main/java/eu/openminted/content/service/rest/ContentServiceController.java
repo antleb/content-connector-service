@@ -10,7 +10,11 @@ import eu.openminted.registry.domain.ContactInfo;
 import eu.openminted.registry.domain.Corpus;
 import eu.openminted.registry.domain.MetadataHeaderInfo;
 import eu.openminted.registry.domain.MetadataIdentifier;
+import org.mitre.openid.connect.model.OIDCAuthenticationToken;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.beans.factory.annotation.Value;
 
@@ -97,5 +101,12 @@ public class ContentServiceController {
     @RequestMapping(value = "/corpus/delete", method = RequestMethod.GET, headers = "Accept=application/json")
     public void delete(@RequestParam(value = "id") String id) {
         corpusBuilder.deleteCorpus(id);
+    }
+
+    @RequestMapping(value = "/user/info", method = RequestMethod.GET)
+    public ResponseEntity<Object> user() {
+//        return new ResponseEntity<>(SecurityContextHolder.getContext().getAuthentication(), HttpStatus.OK);
+        OIDCAuthenticationToken authentication = (OIDCAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+        return new ResponseEntity<>(authentication.getUserInfo().toJson().toString(), HttpStatus.OK);
     }
 }

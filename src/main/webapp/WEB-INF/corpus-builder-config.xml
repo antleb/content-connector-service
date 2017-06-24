@@ -36,4 +36,10 @@
 	<bean id="connectionFactory" class="org.apache.activemq.ActiveMQConnectionFactory">
 		<constructor-arg index="0" type="String" value="${jms.host}"/>
 	</bean>
+
+	<bean class="org.springframework.session.data.redis.config.annotation.web.http.RedisHttpSessionConfiguration"/>
+	<bean class="org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory">
+		<constructor-arg name="host" value="${redis.host}"/>
+		<constructor-arg name="port" value="${redis.port}"/>
+	</bean>
 </beans>
