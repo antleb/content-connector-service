@@ -315,7 +315,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
 //            List<String> dowloadaURLs = new ArrayList<>();
 //            dowloadaURLs.add(registryHost + "/omtd-registry/request/corpus/download?archiveId=" + archiveID);
-            distributionLoc.setDistributionURL(registryHost + "/omtd-registry/request/corpus/download?archiveId=" + archiveID);
+            distributionLoc.setDistributionLocation(registryHost + "/omtd-registry/request/corpus/download?archiveId=" + archiveID);
             datasetDistributionInfo.getDistributionLoc().add(distributionLoc);
 
             distributionInfos.add(datasetDistributionInfo);
