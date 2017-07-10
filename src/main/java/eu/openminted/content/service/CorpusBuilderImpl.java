@@ -7,6 +7,8 @@ import eu.openminted.content.service.dao.CorpusBuilderInfoDao;
 import eu.openminted.content.service.extensions.CorpusBuilderExecutionQueueConsumer;
 import eu.openminted.content.service.extensions.JMSConsumer;
 import eu.openminted.content.service.extensions.JMSProducer;
+import eu.openminted.content.service.faceting.FacetEnum;
+import eu.openminted.content.service.faceting.OmtdFacetInitializer;
 import eu.openminted.content.service.model.CorpusBuilderInfoModel;
 import eu.openminted.corpus.CorpusBuilder;
 import eu.openminted.corpus.CorpusStatus;
@@ -32,6 +34,7 @@ import java.util.stream.Collectors;
 @ComponentScan("eu.openminted.content")
 public class CorpusBuilderImpl implements CorpusBuilder {
     private static Logger log = Logger.getLogger(CorpusBuilderImpl.class.getName());
+    private OmtdFacetInitializer omtdFacetInitializer = new OmtdFacetInitializer();
 
     @Autowired(required = false)
     private List<ContentConnector> contentConnectors;
@@ -125,32 +128,37 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         Facet sourceFacet = new Facet();
         SearchResult result = new SearchResult();
         result.setFacets(new ArrayList<>());
-        sourceFacet.setField("source");
-        sourceFacet.setLabel("Content Source");
+        sourceFacet.setField(FacetEnum.SOURCE.value());
+//        sourceFacet.setLabel("Content Source");
+        sourceFacet.setLabel(omtdFacetInitializer.getOmtdFacetLabels().get(sourceFacet.getField()));
         sourceFacet.setValues(new ArrayList<>());
 
         // retrieve connectors from query
         List<String> connectors = new ArrayList<>();
-        if (query.getParams().containsKey("source")
-                && query.getParams().get("source") != null
-                && query.getParams().get("source").size() > 0) {
-            connectors.addAll(query.getParams().get("source"));
+        if (query.getParams().containsKey(FacetEnum.SOURCE.value())
+                && query.getParams().get(FacetEnum.SOURCE.value()) != null
+                && query.getParams().get(FacetEnum.SOURCE.value()).size() > 0) {
+            connectors.addAll(query.getParams().get(FacetEnum.SOURCE.value()));
         }
 
         // remove field query "source" because this is an custom OMTD field
-        if (query.getParams().containsKey("source"))
-            query.getParams().remove("source");
+        if (query.getParams().containsKey(FacetEnum.SOURCE.value()))
+            query.getParams().remove(FacetEnum.SOURCE.value());
         // also remove documentType (for the time being
         // it is always fullText and the result
         // will be the same as well)
-        if (query.getParams().containsKey("documentType"))
-            query.getParams().remove("documentType");
+        if (query.getParams().containsKey(FacetEnum.DOCUMENT_TYPE.value()))
+            query.getParams().remove(FacetEnum.DOCUMENT_TYPE.value());
 
         if (contentConnectors != null) {
 
-            tempQuery.getFacets().add("licence");
-            tempQuery.getFacets().add("documentType");
-            tempQuery.getFacets().add("documentLanguage");
+            if (!tempQuery.getFacets().contains(FacetEnum.PUBLICATION_TYPE.value())) tempQuery.getFacets().add(FacetEnum.PUBLICATION_TYPE.value());
+            if (!tempQuery.getFacets().contains(FacetEnum.PUBLICATION_YEAR.value())) tempQuery.getFacets().add(FacetEnum.PUBLICATION_YEAR.value());
+            if (!tempQuery.getFacets().contains(FacetEnum.LICENCE.value())) tempQuery.getFacets().add(FacetEnum.LICENCE.value());
+            if (!tempQuery.getFacets().contains(FacetEnum.DOCUMENT_LANG.value())) tempQuery.getFacets().add(FacetEnum.DOCUMENT_LANG.value());
+//            tempQuery.getFacets().add("licence");
+//            tempQuery.getFacets().add("documentType");
+//            tempQuery.getFacets().add("documentLanguage");
 
             for (ContentConnector connector : contentConnectors) {
                 if (connectors.size() > 0 && !connectors.contains(connector.getSourceName())) continue;
@@ -185,7 +193,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
         for (Facet facet : result.getFacets()) {
             // language
-            if (facet.getField().equalsIgnoreCase("documentLanguage")) {
+            if (facet.getField().equalsIgnoreCase(FacetEnum.DOCUMENT_LANG.value())) {
                 CorpusTextPartInfo corpusTextPartInfo = new CorpusTextPartInfo();
                 CorpusMediaPartsType corpusMediaPartsType = new CorpusMediaPartsType();
                 RawCorpusInfo rawCorpusInfo = new RawCorpusInfo();
@@ -259,7 +267,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             }
 
             // licence
-            if (facet.getField().equalsIgnoreCase("licence")) {
+            if (facet.getField().equalsIgnoreCase(FacetEnum.LICENCE.value())) {
                 for (Value value : facet.getValues()) {
                     if (value.getCount() > 0) {
                         DatasetDistributionInfo datasetDistributionInfo = new DatasetDistributionInfo();

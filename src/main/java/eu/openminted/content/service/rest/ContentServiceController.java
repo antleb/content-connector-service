@@ -4,24 +4,30 @@ import eu.openminted.content.connector.Query;
 import eu.openminted.content.connector.SearchResult;
 import eu.openminted.content.service.ContentService;
 import eu.openminted.content.service.dao.CorpusBuilderInfoDao;
+import eu.openminted.content.service.exception.ResourceNotFoundException;
+import eu.openminted.content.service.exception.ServiceAuthenticationException;
 import eu.openminted.corpus.CorpusBuilder;
 import eu.openminted.corpus.CorpusStatus;
-import eu.openminted.registry.domain.ContactInfo;
-import eu.openminted.registry.domain.Corpus;
-import eu.openminted.registry.domain.MetadataHeaderInfo;
-import eu.openminted.registry.domain.MetadataIdentifier;
+import eu.openminted.registry.domain.*;
+import org.apache.log4j.Logger;
 import org.mitre.openid.connect.model.OIDCAuthenticationToken;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.beans.factory.annotation.Value;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
 
 @RestController
 public class ContentServiceController {
+    private static Logger log = Logger.getLogger(ContentServiceController.class.getName());
+
     @Autowired
     private CorpusBuilderInfoDao corpusBuilderInfoDao;
 
@@ -31,8 +37,11 @@ public class ContentServiceController {
     @Autowired
     private CorpusBuilder corpusBuilder;
 
-    @Value("${authentication.token.email}")
+    @Value("${authentication.token.email:test.espas@gmail.com}")
     private String tokenEmail;
+
+    @Value("${authentication.token.name:omtd-user}")
+    private String tokenName;
 
     @RequestMapping(value = "/content/browse", method = RequestMethod.GET, headers = "Accept=application/json")
     public SearchResult browse(@RequestParam(value = "facets") String facets) {
@@ -44,33 +53,111 @@ public class ContentServiceController {
     @RequestMapping(value = "/content/browse", method = RequestMethod.POST, headers = "Accept=application/json")
     public SearchResult browse(@RequestBody Query query) {
 
-        if (query == null) throw new NullPointerException("Query should not be null");
+        if (query == null) throw new ResourceNotFoundException();
         return contentService.search(query);
     }
 
+    @PreAuthorize("hasRole('ROLE_USER')")
     @RequestMapping(value = "/corpus/prepare", method = RequestMethod.GET, headers = "Accept=application/json")
     public Corpus prepare(@RequestParam(value = "facets") String facets) {
+        if (facets == null || facets.isEmpty()) throw new ResourceNotFoundException();
+
+        if (SecurityContextHolder.getContext() == null || !(SecurityContextHolder.getContext().getAuthentication() instanceof OIDCAuthenticationToken))
+            throw new ServiceAuthenticationException();
 
         List<String> facetList = new ArrayList<>(Arrays.asList(facets.split(",")));
         Query query = new Query("*:*", new HashMap<>(), facetList, 0, 1);
         return corpusBuilder.prepareCorpus(query);
     }
 
+    @PreAuthorize("hasRole('ROLE_USER')")
     @RequestMapping(value = "/corpus/prepare", method = RequestMethod.POST, headers = "Accept=application/json")
     public Corpus prepare(@RequestBody Query query) {
 
-        if (query == null) throw new NullPointerException("Query should not be null");
+        if (query == null) throw new ResourceNotFoundException();
+
+        if (SecurityContextHolder.getContext() == null || !(SecurityContextHolder.getContext().getAuthentication() instanceof OIDCAuthenticationToken))
+            throw new ServiceAuthenticationException();
+
         Corpus corpus = corpusBuilder.prepareCorpus(query);
+        String username = "";
         if (corpus != null) {
             ContactInfo contactInfo = new ContactInfo();
-            contactInfo.setContactEmail(tokenEmail);
+            List<Name> names = new ArrayList<>();
+            List<String> emails = new ArrayList<>();
+            List<PersonInfo> personInfos = new ArrayList<>();
+
+            PersonInfo personInfo = new PersonInfo();
+
+            if (SecurityContextHolder.getContext() != null && SecurityContextHolder.getContext().getAuthentication() instanceof OIDCAuthenticationToken) {
+                OIDCAuthenticationToken authentication = (OIDCAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+
+                Name name = new Name();
+                Name familyName = new Name();
+                Name givenName = new Name();
+                Name preferredUsername = new Name();
+
+                name.setValue(authentication.getUserInfo().getName());
+                familyName.setValue(authentication.getUserInfo().getFamilyName());
+                givenName.setValue(authentication.getUserInfo().getGivenName());
+                preferredUsername.setValue(authentication.getUserInfo().getPreferredUsername());
+
+                name.setLang("en");
+                familyName.setLang("en");
+                givenName.setLang("en");
+                preferredUsername.setLang("en");
+
+                names.add(name);
+                names.add(familyName);
+                names.add(givenName);
+                names.add(preferredUsername);
+
+                emails.add(authentication.getUserInfo().getEmail());
+
+                personInfo.setNames(names);
+                CommunicationInfo communicationInfo = new CommunicationInfo();
+                communicationInfo.setEmails(emails);
+
+                personInfo.setCommunicationInfo(communicationInfo);
+                personInfos.add(personInfo);
+
+                contactInfo.setContactEmail(authentication.getUserInfo().getEmail());
+                contactInfo.setContactPersons(personInfos);
+
+                username = authentication.getUserInfo().getName();
+                if (username == null) username = "";
+            } else {
+                log.warn("There is no valid authentication token. Going with default email.");
+                Name name = new Name();
+                name.setValue(tokenName);
+                name.setLang("en");
+
+                names.add(name);
+                personInfo.setNames(names);
+                personInfos.add(personInfo);
+
+                contactInfo.setContactEmail(tokenEmail);
+                contactInfo.setContactPersons(personInfos);
+
+                username = tokenName;
+            }
             corpus.getCorpusInfo().setContactInfo(contactInfo);
+            for (Description description : corpus.getCorpusInfo().getIdentificationInfo().getDescriptions()) {
+                if (username != null || !username.isEmpty())
+                    description.setValue(description.getValue().replaceAll("\\[user_name\\]", username));
+            }
         }
         return corpus;
     }
 
+    @PreAuthorize("hasRole('ROLE_USER')")
     @RequestMapping(value = "/corpus/build", method = RequestMethod.GET, headers = "Accept=application/json")
     public void build(@RequestParam(value = "id") String id) {
+
+        if (id == null || id.isEmpty()) throw new ResourceNotFoundException();
+
+        if (SecurityContextHolder.getContext() == null || !(SecurityContextHolder.getContext().getAuthentication() instanceof OIDCAuthenticationToken))
+            throw new ServiceAuthenticationException();
 
         Corpus corpus = new Corpus();
         MetadataHeaderInfo metadataHeaderInfo = new MetadataHeaderInfo();
@@ -82,8 +169,14 @@ public class ContentServiceController {
         System.out.println(corpus.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue());
     }
 
+    @PreAuthorize("hasRole('ROLE_USER')")
     @RequestMapping(value = "/corpus/build", method = RequestMethod.POST, headers = "Accept=application/json")
     public void build(@RequestBody Corpus corpus) {
+
+        if (corpus == null) throw new ResourceNotFoundException();
+
+        if (SecurityContextHolder.getContext() == null || !(SecurityContextHolder.getContext().getAuthentication() instanceof OIDCAuthenticationToken))
+            throw new ServiceAuthenticationException();
 
         corpusBuilder.buildCorpus(corpus);
     }
@@ -104,6 +197,7 @@ public class ContentServiceController {
     }
 
     @RequestMapping(value = "/user/info", method = RequestMethod.GET)
+    @PreAuthorize("hasRole('ROLE_USER')")
     public ResponseEntity<Object> user() {
 //        return new ResponseEntity<>(SecurityContextHolder.getContext().getAuthentication(), HttpStatus.OK);
         OIDCAuthenticationToken authentication = (OIDCAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
