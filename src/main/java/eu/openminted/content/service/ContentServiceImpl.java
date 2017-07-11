@@ -5,8 +5,8 @@ import eu.openminted.content.connector.Query;
 import eu.openminted.content.connector.SearchResult;
 import eu.openminted.content.service.faceting.FacetEnum;
 import eu.openminted.content.service.faceting.OmtdFacetInitializer;
-import eu.openminted.registry.domain.Facet;
-import eu.openminted.registry.domain.Value;
+import eu.openminted.registry.core.domain.Facet;
+import eu.openminted.registry.core.domain.Value;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 

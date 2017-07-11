@@ -12,6 +12,7 @@ import eu.openminted.content.service.faceting.OmtdFacetInitializer;
 import eu.openminted.content.service.model.CorpusBuilderInfoModel;
 import eu.openminted.corpus.CorpusBuilder;
 import eu.openminted.corpus.CorpusStatus;
+import eu.openminted.registry.core.domain.*;
 import eu.openminted.registry.domain.*;
 import eu.openminted.store.restclient.StoreRESTClient;
 import org.apache.log4j.Logger;

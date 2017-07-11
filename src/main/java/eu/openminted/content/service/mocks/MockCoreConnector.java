@@ -3,8 +3,8 @@ package eu.openminted.content.service.mocks;
 import eu.openminted.content.connector.ContentConnector;
 import eu.openminted.content.connector.Query;
 import eu.openminted.content.connector.SearchResult;
-import eu.openminted.registry.domain.Facet;
-import eu.openminted.registry.domain.Value;
+import eu.openminted.registry.core.domain.Facet;
+import eu.openminted.registry.core.domain.Value;
 
 import java.io.InputStream;
 import java.util.*;
