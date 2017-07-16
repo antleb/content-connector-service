@@ -3,14 +3,13 @@ package eu.openminted.content.service;
 import eu.openminted.content.connector.ContentConnector;
 import eu.openminted.content.connector.Query;
 import eu.openminted.content.connector.SearchResult;
-import eu.openminted.content.service.faceting.FacetEnum;
-import eu.openminted.content.service.faceting.OmtdFacetInitializer;
+import eu.openminted.content.connector.faceting.OMTDFacetEnum;
+import eu.openminted.content.connector.faceting.OMTDFacetInitializer;
 import eu.openminted.registry.core.domain.Facet;
 import eu.openminted.registry.core.domain.Value;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import javax.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -19,7 +18,7 @@ public class ContentServiceImpl implements ContentService {
 
     @Autowired(required = false)
     private List<ContentConnector> contentConnectors;
-    private OmtdFacetInitializer omtdFacetInitializer = new OmtdFacetInitializer();
+    private OMTDFacetInitializer OMTDFacetInitializer = new OMTDFacetInitializer();
 
     @Override
     public SearchResult search(Query query) {
@@ -27,35 +26,26 @@ public class ContentServiceImpl implements ContentService {
         query.setFrom(0);
         query.setTo(1);
 
-        if (!query.getFacets().contains(FacetEnum.PUBLICATION_TYPE.value())) query.getFacets().add(FacetEnum.PUBLICATION_TYPE.value());
-        if (!query.getFacets().contains(FacetEnum.PUBLICATION_YEAR.value())) query.getFacets().add(FacetEnum.PUBLICATION_YEAR.value());
-        if (!query.getFacets().contains(FacetEnum.LICENCE.value())) query.getFacets().add(FacetEnum.LICENCE.value());
-        if (!query.getFacets().contains(FacetEnum.DOCUMENT_LANG.value())) query.getFacets().add(FacetEnum.DOCUMENT_LANG.value());
+        if (!query.getFacets().contains(OMTDFacetEnum.PUBLICATION_TYPE.value())) query.getFacets().add(OMTDFacetEnum.PUBLICATION_TYPE.value());
+        if (!query.getFacets().contains(OMTDFacetEnum.PUBLICATION_YEAR.value())) query.getFacets().add(OMTDFacetEnum.PUBLICATION_YEAR.value());
+        if (!query.getFacets().contains(OMTDFacetEnum.RIGHTS.value())) query.getFacets().add(OMTDFacetEnum.RIGHTS.value());
+        if (!query.getFacets().contains(OMTDFacetEnum.DOCUMENT_LANG.value())) query.getFacets().add(OMTDFacetEnum.DOCUMENT_LANG.value());
 
         SearchResult result = new SearchResult();
         Facet sourceFacet = new Facet();
         result.setFacets(new ArrayList<>());
 
-        sourceFacet.setField(FacetEnum.SOURCE.value());
+        sourceFacet.setField(OMTDFacetEnum.SOURCE.value());
         sourceFacet.setValues(new ArrayList<>());
 
         // retrieve connectors from query
         List<String> connectors = new ArrayList<>();
         if (query.getParams() != null) {
-            if (query.getParams().containsKey(FacetEnum.SOURCE.value())
-                    && query.getParams().get(FacetEnum.SOURCE.value()) != null
-                    && query.getParams().get(FacetEnum.SOURCE.value()).size() > 0) {
-                connectors.addAll(query.getParams().get(FacetEnum.SOURCE.value()));
+            if (query.getParams().containsKey(OMTDFacetEnum.SOURCE.value())
+                    && query.getParams().get(OMTDFacetEnum.SOURCE.value()) != null
+                    && query.getParams().get(OMTDFacetEnum.SOURCE.value()).size() > 0) {
+                connectors.addAll(query.getParams().get(OMTDFacetEnum.SOURCE.value()));
             }
-
-            // remove field query "source" because this is a custom OMTD field
-            if (query.getParams().containsKey(FacetEnum.SOURCE.value()))
-                query.getParams().remove(FacetEnum.SOURCE.value());
-            // also remove documentType (for the time being
-            // it is always fullText and the result
-            // will be the same as well)
-            if (query.getParams().containsKey(FacetEnum.DOCUMENT_TYPE.value()))
-                query.getParams().remove(FacetEnum.DOCUMENT_TYPE.value());
         }
 
         if (contentConnectors != null) {
@@ -77,7 +67,9 @@ public class ContentServiceImpl implements ContentService {
         result.getFacets().add(sourceFacet);
 
         for (Facet facet : result.getFacets()) {
-            facet.setLabel(omtdFacetInitializer.getOmtdFacetLabels().get(facet.getField()));
+            OMTDFacetEnum facetEnum = OMTDFacetEnum.fromValue(facet.getField());
+            if (facetEnum != null)
+            facet.setLabel(OMTDFacetInitializer.getOmtdFacetLabels().get(facetEnum));
         }
         return result;
     }
