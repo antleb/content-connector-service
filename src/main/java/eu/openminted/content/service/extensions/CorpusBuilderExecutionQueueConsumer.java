@@ -50,6 +50,9 @@ public class CorpusBuilderExecutionQueueConsumer {
     @org.springframework.beans.factory.annotation.Value("${registry.host}")
     private String registryHost;
 
+    @org.springframework.beans.factory.annotation.Value("${fulltext.limit:0}")
+    private Integer fulltextLimit;
+
     private ThreadPoolExecutor queueTasksThreadPoolExecutor;
 
     public void init(BlockingQueue<Corpus> corpora) {
@@ -91,21 +94,21 @@ public class CorpusBuilderExecutionQueueConsumer {
                                     connectors.addAll(query.getParams().get("source"));
                                 }
 
-                                // remove field query "source" because this is an custom OMTD field
-                                if (query.getParams().containsKey("source"))
-                                    query.getParams().remove("source");
-                                // also remove documentType (for the time being
-                                // it is always fullText and the result
-                                // will be the same as well)
-                                if (query.getParams().containsKey("documentType"))
-                                    query.getParams().remove("documentType");
+//                                // remove field query "source" because this is an custom OMTD field
+//                                if (query.getParams().containsKey("source"))
+//                                    query.getParams().remove("source");
+//                                // also remove documentType (for the time being
+//                                // it is always fullText and the result
+//                                // will be the same as well)
+//                                if (query.getParams().containsKey("documentType"))
+//                                    query.getParams().remove("documentType");
 
 
                                 for (ContentConnector connector : contentConnectors) {
 
                                     if (connectors.size() > 0 && !connectors.contains(connector.getSourceName())) continue;
 
-                                    FetchMetadataTask task = new FetchMetadataTask(storeRESTClient, connector, query, tempDirectoryPath, corpusBuilderInfoModel.getArchiveId());
+                                    FetchMetadataTask task = new FetchMetadataTask(storeRESTClient, connector, query, tempDirectoryPath, corpusBuilderInfoModel.getArchiveId(), fulltextLimit);
                                     task.setCacheClient(cacheClient);
                                     task.setCorpusBuilderInfoDao(corpusBuilderInfoDao);
                                     task.setCorpusId(corpusId);

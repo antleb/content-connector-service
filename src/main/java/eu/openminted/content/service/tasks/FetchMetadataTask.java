@@ -38,6 +38,7 @@ public class FetchMetadataTask implements Runnable {
     private CorpusBuilderInfoDao corpusBuilderInfoDao;
     private String corpusId;
     private boolean isInterrupted;
+    private int fulltextLimit;
 
     public InputStream getInputStream() {
         return inputStream;
@@ -51,12 +52,13 @@ public class FetchMetadataTask implements Runnable {
         this.corpusId = corpusId;
     }
 
-    public FetchMetadataTask(StoreRESTClient storeRESTClient, ContentConnector connector, Query query, String tempDirectoryPath, String archiveId) {
+    public FetchMetadataTask(StoreRESTClient storeRESTClient, ContentConnector connector, Query query, String tempDirectoryPath, String archiveId, int fulltextLimit) {
         this.connector = connector;
         this.query = query;
         this.archiveId = archiveId;
         this.storeRESTClient = storeRESTClient;
         this.tempDirectoryPath = tempDirectoryPath;
+        this.fulltextLimit = fulltextLimit;
     }
 
     @Override
@@ -119,6 +121,7 @@ public class FetchMetadataTask implements Runnable {
             log.error("FetchMetadataTask.run-XPathExpressionException ", e);
         }
 
+        int countFulltext = 0;
         if (nodes != null) {
             for (int i = 0; i < nodes.getLength(); i++) {
                 if (isInterrupted) break;
@@ -164,7 +167,12 @@ public class FetchMetadataTask implements Runnable {
                     for (int j = 0; j < hashkeys.getLength(); j++) {
                         Node hashkey = hashkeys.item(j);
                         if (hashkey != null) {
-                            identifiers.get(identifier).add(hashkey.getTextContent());
+                            if ((this.fulltextLimit > 0 && countFulltext <= this.fulltextLimit)) {
+                                identifiers.get(identifier).add(hashkey.getTextContent());
+                                countFulltext++;
+                            } else if (this.fulltextLimit == 0){
+                                identifiers.get(identifier).add(hashkey.getTextContent());
+                            }
                         }
                     }
                 } catch (XPathExpressionException e) {
