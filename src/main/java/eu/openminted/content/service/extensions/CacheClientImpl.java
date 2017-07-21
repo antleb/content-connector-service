@@ -2,7 +2,7 @@ package eu.openminted.content.service.extensions;
 
 import eu.openminted.content.connector.ContentConnector;
 import eu.openminted.omtdcache.CacheDataID;
-import eu.openminted.omtdcache.CacheDataIDMD5;
+import eu.openminted.omtdcache.CacheDataIDSHA1;
 import eu.openminted.omtdcache.core.*;
 import org.apache.commons.io.IOUtils;
 import org.apache.log4j.Logger;
@@ -49,10 +49,10 @@ public class CacheClientImpl implements CacheClient {
         cacheProperties.setType(CacheOMTDStoreImpl.class.getName());
 
         myCache = CacheFactory.getCache(cacheProperties);
-        cacheDataIDProvider = new CacheDataIDMD5();
+        cacheDataIDProvider = new CacheDataIDSHA1();
     }
 
-    public boolean setDocument(ContentConnector connector, String identifier, String hashKey) {
+    public String setDocument(ContentConnector connector, String identifier) {
         try {
             InputStream inputStream = connector.downloadFullText(identifier);
 
@@ -61,27 +61,53 @@ public class CacheClientImpl implements CacheClient {
                 IOUtils.copy(inputStream, outputStream);
 
                 Data data = new Data(outputStream.toByteArray());
-                return myCache.putData(hashKey, data);
+
+                String hashKey = cacheDataIDProvider.getID(data.getBytes());
+                boolean isInserted = myCache.putData(hashKey, data);
+                if (isInserted)
+                    return hashKey;
+                else return "";
             }
 
         } catch (IOException e) {
             log.error("Error inserting document", e);
         }
-        return false;
+        return "";
     }
 
-    public InputStream getDocument(ContentConnector connector, String identifier, String hashkey) {
+    public InputStream getDocument(ContentConnector connector, String identifier) {
+        InputStream inputStream = null;
+
+        String hashΚey = setDocument(connector, identifier);
+
+        if (!hashΚey.isEmpty()) {
+            try {
+                Data retrievedData = myCache.getData(hashΚey);
+                if (retrievedData != null) {
+                    inputStream = new ByteArrayInputStream(retrievedData.getBytes());
+                }
+
+            } catch (Exception e) {
+                log.error("Error retrieving document", e);
+            }
+        }
+
+        return inputStream;
+    }
+
+    public InputStream getDocument(ContentConnector connector, String identifier, String hashΚey) {
         InputStream inputStream = null;
         try {
-            boolean existsInCache = myCache.contains(hashkey);
+            boolean existsInCache = myCache.contains(hashΚey);
+
             if (!existsInCache) {
                 log.debug("document not found... Inserting document now!");
-                existsInCache = setDocument(connector, identifier, hashkey);
+                hashΚey = setDocument(connector, identifier);
             }
 
-            if (existsInCache) {
+            if (existsInCache || !hashΚey.isEmpty()) {
                 log.debug("document found... Retrieving document now!");
-                Data retrievedData = myCache.getData(hashkey);
+                Data retrievedData = myCache.getData(hashΚey);
                 if (retrievedData != null) {
                     inputStream = new ByteArrayInputStream(retrievedData.getBytes());
                 }

@@ -188,19 +188,32 @@ public class FetchMetadataTask implements Runnable {
                 if (isInterrupted) break;
                 try {
 
-                    for (String hashKey : identifiers.get(identifier)) {
-                        if (hashKey != null && !hashKey.isEmpty()) {
-                            InputStream fullTextInputStream = cacheClient.getDocument(connector, identifier, hashKey);
-                            FileOutputStream outputStream = null;
-                            if (fullTextInputStream != null) {
+                    if (identifiers.get(identifier).size() > 0) {
+                        for (String hashKey : identifiers.get(identifier)) {
+                            if (hashKey != null && !hashKey.isEmpty()) {
+                                InputStream fullTextInputStream = cacheClient.getDocument(connector, identifier, hashKey);
+                                FileOutputStream outputStream = null;
+                                if (fullTextInputStream != null) {
 
-                                outputStream = new FileOutputStream(downloadFile, false);
-                                IOUtils.copy(fullTextInputStream, outputStream);
-                                storeRESTClient.storeFile(downloadFile, archiveId + "/fulltext", identifier + ".pdf");
+                                    outputStream = new FileOutputStream(downloadFile, false);
+                                    IOUtils.copy(fullTextInputStream, outputStream);
+                                    storeRESTClient.storeFile(downloadFile, archiveId + "/fulltext", identifier + ".pdf");
+                                }
+                                IOUtils.closeQuietly(fullTextInputStream);
+                                IOUtils.closeQuietly(outputStream);
                             }
-                            IOUtils.closeQuietly(fullTextInputStream);
-                            IOUtils.closeQuietly(outputStream);
                         }
+                    } else {
+                        InputStream fullTextInputStream = cacheClient.getDocument(connector, identifier);
+                        FileOutputStream outputStream = null;
+                        if (fullTextInputStream != null) {
+
+                            outputStream = new FileOutputStream(downloadFile, false);
+                            IOUtils.copy(fullTextInputStream, outputStream);
+                            storeRESTClient.storeFile(downloadFile, archiveId + "/fulltext", identifier + ".pdf");
+                        }
+                        IOUtils.closeQuietly(fullTextInputStream);
+                        IOUtils.closeQuietly(outputStream);
                     }
                 } catch (FileNotFoundException e) {
                     log.error("FetchMetadataTask.run- Downloading fulltext -FileNotFoundException ", e);
