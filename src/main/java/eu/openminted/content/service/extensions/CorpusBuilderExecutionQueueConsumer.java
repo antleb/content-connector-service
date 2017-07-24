@@ -12,7 +12,6 @@ import eu.openminted.store.restclient.StoreRESTClient;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
@@ -106,7 +105,8 @@ public class CorpusBuilderExecutionQueueConsumer {
 
                                 for (ContentConnector connector : contentConnectors) {
 
-                                    if (connectors.size() > 0 && !connectors.contains(connector.getSourceName())) continue;
+                                    if (connectors.size() > 0 && !connectors.contains(connector.getSourceName()))
+                                        continue;
 
                                     FetchMetadataTask task = new FetchMetadataTask(storeRESTClient, connector, query, tempDirectoryPath, corpusBuilderInfoModel.getArchiveId(), fulltextLimit);
                                     task.setCacheClient(cacheClient);
@@ -128,46 +128,44 @@ public class CorpusBuilderExecutionQueueConsumer {
                                         log.error("CorpusBuilderImpl.buildCorpus - Inner exception at the future.get method", e);
                                     }
                                 }
-                            }  catch (Exception ex) {
+                            } catch (Exception ex) {
 
                                 log.error("CorpusBuilderImpl.buildCorpus", ex);
-//                                if (corpusBuilderInfoModel != null) {
-//                                    corpusBuilderInfoModel.setStatus(CorpusStatus.CANCELED.toString());
-//                                    corpusBuilderInfoDao.update(corpusBuilderInfoModel.getId(), "status", CorpusStatus.CANCELED);
-//                                }
-                            } finally {
-                                corpusBuilderInfoModel = corpusBuilderInfoDao.find(corpusId);
-                                String text;
-                                if (corpusBuilderInfoModel != null
-                                        && (!corpusBuilderInfoModel.getStatus().equalsIgnoreCase(CorpusStatus.CANCELED.toString())
-                                        || corpusBuilderInfoModel.getStatus().equalsIgnoreCase(CorpusStatus.DELETED.toString()))) {
-
-                                    storeRESTClient.finalizeArchive(corpusBuilderInfoModel.getArchiveId());
-
-                                    corpusBuilderInfoModel.setStatus(CorpusStatus.CREATED.toString());
-                                    corpusBuilderInfoDao.update(corpusBuilderInfoModel.getId(), "status", CorpusStatus.CREATED);
-                                    text = "Corpus with ID " + corpusId + " has been created at archive with ID " + corpusBuilderInfoModel.getArchiveId();
-
-                                    try {
-                                        String url = registryHost + "/omtd-registry/request/corpus";
-                                        RestTemplate restTemplate = new RestTemplate();
-                                        restTemplate.postForObject(url, corpus, Corpus.class);
-                                        new Thread(() -> producer.send("Corpus Build: Sending corpus with ID " + corpus.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue() + " to registry")).start();
-                                    } catch (HttpServerErrorException e) {
-                                        log.error("CorpusBuilderImpl.buildCorpus: Error posting corpus at registry. Error stacktrace is omitted on purpose");
-                                        new Thread(() -> producer.send("Corpus Build: Error sending corpus with  ID " + corpus.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue() + " to registry")).start();
-                                    }
-                                } else {
-                                    text = "Corpus with corpusId " + corpusId + " has been interrupted!";
-                                }
-
-                                if (!corpus.getCorpusInfo().getContactInfo().getContactEmail().isEmpty())
-                                    text = "email<" + corpus.getCorpusInfo().getContactInfo().getContactEmail() + ">subject<Corpus Build: Your corpus is ready>" + text;
-
-                                final String message = text;
-                                new Thread(() -> producer.send(message)).start();
                             }
+
+                            corpusBuilderInfoModel = corpusBuilderInfoDao.find(corpusId);
+                            String text;
+                            if (corpusBuilderInfoModel != null
+                                    && (!corpusBuilderInfoModel.getStatus().equalsIgnoreCase(CorpusStatus.CANCELED.toString())
+                                    || corpusBuilderInfoModel.getStatus().equalsIgnoreCase(CorpusStatus.DELETED.toString()))) {
+
+                                storeRESTClient.finalizeArchive(corpusBuilderInfoModel.getArchiveId());
+
+                                corpusBuilderInfoModel.setStatus(CorpusStatus.CREATED.toString());
+                                corpusBuilderInfoDao.update(corpusBuilderInfoModel.getId(), "status", CorpusStatus.CREATED);
+                                text = "Corpus with ID " + corpusId + " has been created at archive with ID " + corpusBuilderInfoModel.getArchiveId();
+
+                                try {
+                                    String url = registryHost + "/omtd-registry/request/corpus";
+                                    RestTemplate restTemplate = new RestTemplate();
+                                    restTemplate.postForObject(url, corpus, Corpus.class);
+                                    new Thread(() -> producer.send("Corpus Build: Sending corpus with ID " + corpus.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue() + " to registry")).start();
+                                } catch (Exception e) {
+                                    log.error("CorpusBuilderImpl.buildCorpus: Error posting corpus at registry. Error stacktrace is omitted on purpose");
+                                    new Thread(() -> producer.send("Corpus Build: Error sending corpus with  ID " + corpus.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue() + " to registry")).start();
+                                }
+                            } else {
+                                text = "Corpus with corpusId " + corpusId + " has been interrupted!";
+                            }
+
+                            if (!corpus.getCorpusInfo().getContactInfo().getContactEmail().isEmpty()) {
+                                text = "email<" + corpus.getCorpusInfo().getContactInfo().getContactEmail() + ">subject<Corpus Build: Your corpus is ready>" + text;
+                            }
+
+                            final String message = text;
+                            new Thread(() -> producer.send(message)).start();
                         }
+
                     });
                 }
 

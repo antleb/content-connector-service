@@ -2,8 +2,12 @@ package eu.openminted.content.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import eu.openminted.content.connector.*;
-import eu.openminted.content.connector.faceting.*;
+import eu.openminted.content.connector.ContentConnector;
+import eu.openminted.content.connector.LanguageConverter;
+import eu.openminted.content.connector.Query;
+import eu.openminted.content.connector.SearchResult;
+import eu.openminted.content.connector.faceting.OMTDFacetEnum;
+import eu.openminted.content.connector.faceting.OMTDFacetInitializer;
 import eu.openminted.content.service.dao.CorpusBuilderInfoDao;
 import eu.openminted.content.service.extensions.CorpusBuilderExecutionQueueConsumer;
 import eu.openminted.content.service.extensions.JMSConsumer;
@@ -11,7 +15,8 @@ import eu.openminted.content.service.extensions.JMSProducer;
 import eu.openminted.content.service.model.CorpusBuilderInfoModel;
 import eu.openminted.corpus.CorpusBuilder;
 import eu.openminted.corpus.CorpusStatus;
-import eu.openminted.registry.core.domain.*;
+import eu.openminted.registry.core.domain.Facet;
+import eu.openminted.registry.core.domain.Value;
 import eu.openminted.registry.domain.*;
 import eu.openminted.store.restclient.StoreRESTClient;
 import org.apache.log4j.Logger;
@@ -142,10 +147,14 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
         if (contentConnectors != null) {
 
-            if (!tempQuery.getFacets().contains(OMTDFacetEnum.PUBLICATION_TYPE.value())) tempQuery.getFacets().add(OMTDFacetEnum.PUBLICATION_TYPE.value());
-            if (!tempQuery.getFacets().contains(OMTDFacetEnum.PUBLICATION_YEAR.value())) tempQuery.getFacets().add(OMTDFacetEnum.PUBLICATION_YEAR.value());
-            if (!tempQuery.getFacets().contains(OMTDFacetEnum.RIGHTS.value())) tempQuery.getFacets().add(OMTDFacetEnum.RIGHTS.value());
-            if (!tempQuery.getFacets().contains(OMTDFacetEnum.DOCUMENT_LANG.value())) tempQuery.getFacets().add(OMTDFacetEnum.DOCUMENT_LANG.value());
+            if (!tempQuery.getFacets().contains(OMTDFacetEnum.PUBLICATION_TYPE.value()))
+                tempQuery.getFacets().add(OMTDFacetEnum.PUBLICATION_TYPE.value());
+            if (!tempQuery.getFacets().contains(OMTDFacetEnum.PUBLICATION_YEAR.value()))
+                tempQuery.getFacets().add(OMTDFacetEnum.PUBLICATION_YEAR.value());
+            if (!tempQuery.getFacets().contains(OMTDFacetEnum.RIGHTS.value()))
+                tempQuery.getFacets().add(OMTDFacetEnum.RIGHTS.value());
+            if (!tempQuery.getFacets().contains(OMTDFacetEnum.DOCUMENT_LANG.value()))
+                tempQuery.getFacets().add(OMTDFacetEnum.DOCUMENT_LANG.value());
 
             for (ContentConnector connector : contentConnectors) {
                 if (connectors.size() > 0 && !connectors.contains(connector.getSourceName())) continue;
@@ -265,14 +274,10 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
                         LicenceInfos licenceInfos = new LicenceInfos();
                         licenceInfos.getLicenceInfo().add(licenceInfo);
-
-//                        RightsStatementInfo rightsStatementInfo = new RightsStatementInfo();
-//                        rightsStatementInfo.setRightsStmtURL("http://api.openaire.eu/vocabularies/dnet:access_modes");
-//                        rightsStatementInfo.setRightsStmtName(RightsStmtNameConverter.convert(value.getValue()));
-
+                        rightsInfo.setLicenceInfos(new ArrayList<>());
                         rightsInfo.getLicenceInfos().add(licenceInfos);
-                        rightsInfo.getRightsStatement().add(RightsStmtNameConverter.convert(value.getValue()));
-//                        rightsInfo.setRightsStatementInfo(rightsStatementInfo);
+                        rightsInfo.setRightsStatement(new ArrayList<>());
+                        rightsInfo.getRightsStatement().add(OMTDFacetInitializer.getOmtdGetRightsStmtEnumFromLabel().get(value.getValue()));
 
                         datasetDistributionInfo.setRightsInfo(rightsInfo);
                         SizeInfo sizeInfo = new SizeInfo();
