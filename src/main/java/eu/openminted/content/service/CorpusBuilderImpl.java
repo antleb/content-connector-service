@@ -335,6 +335,14 @@ public class CorpusBuilderImpl implements CorpusBuilder {
     @Override
     public void buildCorpus(Corpus corpusMetadata) {
 
+        try {
+            String corpusRequest = new ObjectMapper().writeValueAsString(corpusMetadata);
+            new Thread(() -> producer.send(corpusRequest)).start();
+
+        } catch (JsonProcessingException e) {
+            log.error("CorpusBuilderImpl.buildCorpus: Unable to parse Corpus as Json string", e);
+        }
+
         if (contentConnectors != null) {
             corpora.add(corpusMetadata);
             new Thread(() -> producer.send("Corpus Build: Sending corpus with id " + corpusMetadata.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue() + " to corpora queue for execution")).start();
