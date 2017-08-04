@@ -267,22 +267,9 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                 for (Value value : facet.getValues()) {
                     if (value.getCount() > 0) {
                         DatasetDistributionInfo datasetDistributionInfo = new DatasetDistributionInfo();
-                        RightsInfo rightsInfo = new RightsInfo();
-                        LicenceInfo licenceInfo = new LicenceInfo();
-                        licenceInfo.setLicence(LicenceEnum.NON_STANDARD_LICENCE_TERMS);
-                        licenceInfo.setNonStandardLicenceTermsURL(value.getValue());
-
-                        LicenceInfos licenceInfos = new LicenceInfos();
-                        licenceInfos.getLicenceInfo().add(licenceInfo);
-                        rightsInfo.setLicenceInfos(new ArrayList<>());
-                        rightsInfo.getLicenceInfos().add(licenceInfos);
-                        rightsInfo.setRightsStatement(new ArrayList<>());
-                        rightsInfo.getRightsStatement().add(OMTDFacetInitializer.getOmtdGetRightsStmtEnumFromLabel().get(value.getValue()));
-
+                        RightsInfo rightsInfo = createRightsInfo(value);
                         datasetDistributionInfo.setRightsInfo(rightsInfo);
-                        SizeInfo sizeInfo = new SizeInfo();
-                        sizeInfo.setSize(String.valueOf(value.getCount()));
-                        sizeInfo.setSizeUnit(SizeUnitEnum.TEXTS);
+                        SizeInfo sizeInfo = createSizeInfo(value);
                         datasetDistributionInfo.getSizes().add(sizeInfo);
                         corpusInfo.getDistributionInfos().add(datasetDistributionInfo);
                     }
@@ -416,7 +403,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             new Thread(() -> producer.send("Corpus " + s + " deleted")).start();
             log.info(corpusBuilderInfoDao.find(s));
         } catch (Exception e) {
-            log.error("CorpusBuilderImpl.deleteCorpus", e);
+
         }
     }
 
@@ -427,5 +414,27 @@ public class CorpusBuilderImpl implements CorpusBuilder {
      */
     private String createCorpusId() {
         return UUID.randomUUID().toString();
+    }
+
+    private RightsInfo createRightsInfo(Value value) {
+        RightsInfo rightsInfo = new RightsInfo();
+        LicenceInfo licenceInfo = new LicenceInfo();
+        licenceInfo.setLicence(LicenceEnum.NON_STANDARD_LICENCE_TERMS);
+        licenceInfo.setNonStandardLicenceTermsURL(value.getValue());
+
+        LicenceInfos licenceInfos = new LicenceInfos();
+        licenceInfos.getLicenceInfo().add(licenceInfo);
+        rightsInfo.setLicenceInfos(new ArrayList<>());
+        rightsInfo.getLicenceInfos().add(licenceInfos);
+        rightsInfo.setRightsStatement(new ArrayList<>());
+        rightsInfo.getRightsStatement().add(OMTDFacetInitializer.getOmtdGetRightsStmtEnumFromLabel().get(value.getValue()));
+        return rightsInfo;
+    }
+
+    private SizeInfo createSizeInfo(Value value) {
+        SizeInfo sizeInfo = new SizeInfo();
+        sizeInfo.setSize(String.valueOf(value.getCount()));
+        sizeInfo.setSizeUnit(SizeUnitEnum.TEXTS);
+        return sizeInfo;
     }
 }

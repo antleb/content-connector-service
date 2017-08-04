@@ -5,6 +5,7 @@ import eu.openminted.content.connector.Query;
 import eu.openminted.content.connector.SearchResult;
 import eu.openminted.content.connector.faceting.OMTDFacetEnum;
 import eu.openminted.content.connector.faceting.OMTDFacetInitializer;
+import eu.openminted.content.service.extensions.JMSProducer;
 import eu.openminted.registry.core.domain.Facet;
 import eu.openminted.registry.core.domain.Value;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,8 +17,15 @@ import java.util.List;
 @Component
 public class ContentServiceImpl implements ContentService {
 
+    @org.springframework.beans.factory.annotation.Value("${fulltext.limit:0}")
+    private Integer fulltextLimit;
+
+    @Autowired
+    private JMSProducer producer;
+
     @Autowired(required = false)
     private List<ContentConnector> contentConnectors;
+
     private OMTDFacetInitializer OMTDFacetInitializer = new OMTDFacetInitializer();
 
     @Override
@@ -72,6 +80,17 @@ public class ContentServiceImpl implements ContentService {
             facet.setLabel(OMTDFacetInitializer.getOmtdFacetLabels().get(facetEnum));
         }
         return result;
+    }
+
+    @Override
+    public ServiceStatus status() {
+        ServiceStatus serviceStatus = new ServiceStatus();
+        serviceStatus.setMaxFulltextDocuments(fulltextLimit);
+        new Thread(() -> {
+            producer.send("Content service status: " +
+                    "maxFulltextDocuments: " + serviceStatus.getMaxFulltextDocuments());
+        }).start();
+        return serviceStatus;
     }
 
     private boolean containsIgnoreCase(List<String> list, String keyword) {

@@ -184,10 +184,10 @@ public class FetchMetadataTask implements Runnable {
 
             IOUtils.closeQuietly(inputStream);
 
+            countFulltext = 0;
             for (String identifier : identifiers.keySet()) {
                 if (isInterrupted) break;
                 try {
-
                     if (identifiers.get(identifier).size() > 0) {
                         for (String hashKey : identifiers.get(identifier)) {
                             if (hashKey != null && !hashKey.isEmpty()) {
@@ -204,6 +204,12 @@ public class FetchMetadataTask implements Runnable {
                             }
                         }
                     } else {
+                        if ((this.fulltextLimit > 0 && countFulltext > this.fulltextLimit)) {
+                            break;
+                        } else if (this.fulltextLimit > 0) {
+                            countFulltext++;
+                        }
+
                         InputStream fullTextInputStream = cacheClient.getDocument(connector, identifier);
                         FileOutputStream outputStream = null;
                         if (fullTextInputStream != null) {

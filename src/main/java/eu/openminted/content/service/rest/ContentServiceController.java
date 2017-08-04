@@ -3,6 +3,7 @@ package eu.openminted.content.service.rest;
 import eu.openminted.content.connector.Query;
 import eu.openminted.content.connector.SearchResult;
 import eu.openminted.content.service.ContentService;
+import eu.openminted.content.service.ServiceStatus;
 import eu.openminted.content.service.dao.CorpusBuilderInfoDao;
 import eu.openminted.content.service.exception.ResourceNotFoundException;
 import eu.openminted.content.service.exception.ServiceAuthenticationException;
@@ -55,6 +56,12 @@ public class ContentServiceController {
 
         if (query == null) throw new ResourceNotFoundException();
         return contentService.search(query);
+    }
+
+    @RequestMapping(value = "/content/status", method = RequestMethod.GET, headers = "Accept=application/json")
+    public ServiceStatus status() {
+
+        return contentService.status();
     }
 
     @PreAuthorize("hasRole('ROLE_USER')")

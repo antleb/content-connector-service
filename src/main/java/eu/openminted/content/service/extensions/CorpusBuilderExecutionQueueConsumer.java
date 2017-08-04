@@ -93,16 +93,6 @@ public class CorpusBuilderExecutionQueueConsumer {
                                     connectors.addAll(query.getParams().get("source"));
                                 }
 
-//                                // remove field query "source" because this is an custom OMTD field
-//                                if (query.getParams().containsKey("source"))
-//                                    query.getParams().remove("source");
-//                                // also remove documentType (for the time being
-//                                // it is always fullText and the result
-//                                // will be the same as well)
-//                                if (query.getParams().containsKey("documentType"))
-//                                    query.getParams().remove("documentType");
-
-
                                 for (ContentConnector connector : contentConnectors) {
 
                                     if (connectors.size() > 0 && !connectors.contains(connector.getSourceName()))
