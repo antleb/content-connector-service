@@ -49,8 +49,8 @@ public class CorpusBuilderExecutionQueueConsumer {
     @org.springframework.beans.factory.annotation.Value("${registry.host}")
     private String registryHost;
 
-    @org.springframework.beans.factory.annotation.Value("${fulltext.limit:0}")
-    private Integer fulltextLimit;
+    @org.springframework.beans.factory.annotation.Value("${content.limit:0}")
+    private Integer contentLimit;
 
     private ThreadPoolExecutor queueTasksThreadPoolExecutor;
 
@@ -98,7 +98,13 @@ public class CorpusBuilderExecutionQueueConsumer {
                                     if (connectors.size() > 0 && !connectors.contains(connector.getSourceName()))
                                         continue;
 
-                                    FetchMetadataTask task = new FetchMetadataTask(storeRESTClient, connector, query, tempDirectoryPath, corpusBuilderInfoModel.getArchiveId(), fulltextLimit);
+                                    FetchMetadataTask task = new FetchMetadataTask(storeRESTClient,
+                                            connector,
+                                            query,
+                                            tempDirectoryPath,
+                                            corpusBuilderInfoModel.getArchiveId(),
+                                            contentLimit,
+                                            producer);
                                     task.setCacheClient(cacheClient);
                                     task.setCorpusBuilderInfoDao(corpusBuilderInfoDao);
                                     task.setCorpusId(corpusId);

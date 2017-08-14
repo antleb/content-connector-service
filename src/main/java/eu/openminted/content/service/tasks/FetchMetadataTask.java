@@ -4,6 +4,7 @@ import eu.openminted.content.connector.ContentConnector;
 import eu.openminted.content.connector.Query;
 import eu.openminted.content.service.dao.CorpusBuilderInfoDao;
 import eu.openminted.content.service.extensions.CacheClient;
+import eu.openminted.content.service.extensions.JMSProducer;
 import eu.openminted.content.service.model.CorpusBuilderInfoModel;
 import eu.openminted.corpus.CorpusStatus;
 import eu.openminted.store.restclient.StoreRESTClient;
@@ -38,7 +39,8 @@ public class FetchMetadataTask implements Runnable {
     private CorpusBuilderInfoDao corpusBuilderInfoDao;
     private String corpusId;
     private boolean isInterrupted;
-    private int fulltextLimit;
+    private int contentLimit;
+    private JMSProducer producer;
 
     public InputStream getInputStream() {
         return inputStream;
@@ -52,13 +54,20 @@ public class FetchMetadataTask implements Runnable {
         this.corpusId = corpusId;
     }
 
-    public FetchMetadataTask(StoreRESTClient storeRESTClient, ContentConnector connector, Query query, String tempDirectoryPath, String archiveId, int fulltextLimit) {
+    public FetchMetadataTask(StoreRESTClient storeRESTClient,
+                             ContentConnector connector,
+                             Query query,
+                             String tempDirectoryPath,
+                             String archiveId,
+                             int contentLimit,
+                             JMSProducer producer) {
         this.connector = connector;
         this.query = query;
         this.archiveId = archiveId;
         this.storeRESTClient = storeRESTClient;
         this.tempDirectoryPath = tempDirectoryPath;
-        this.fulltextLimit = fulltextLimit;
+        this.contentLimit = contentLimit;
+        this.producer = producer;
     }
 
     @Override
@@ -122,6 +131,8 @@ public class FetchMetadataTask implements Runnable {
         }
 
         int countFulltext = 0;
+        int countMetadata = 0;
+        int countAbstract = 0;
         if (nodes != null) {
             for (int i = 0; i < nodes.getLength(); i++) {
                 if (isInterrupted) break;
@@ -140,6 +151,11 @@ public class FetchMetadataTask implements Runnable {
 
                     writeToFile(imported, metadataFile);
                     storeRESTClient.storeFile(metadataFile, archiveId + "/metadata", identifier + ".xml");
+                    countMetadata++;
+                    final int countMeta = countMetadata;
+                    if (countMeta > 0 && countMeta % 10 == 0)
+                        new Thread(() -> producer.send("Corpus Building Progress: " + countMeta + " metadata")).start();
+
 
                     // Find Abstracts from imported node
                     XPathExpression abstractListExpression = xpath.compile("document/publication/abstracts/abstract");
@@ -158,6 +174,10 @@ public class FetchMetadataTask implements Runnable {
                         fileWriter.flush();
                         fileWriter.close();
                         storeRESTClient.storeFile(abstractFile, archiveId + "/abstract", identifier + ".txt");
+                        countAbstract++;
+                        final int countAbstr = countAbstract;
+                        if (countAbstr > 0 && countAbstr % 10 == 0)
+                            new Thread(() -> producer.send("Corpus Building Progress: " + countAbstr + " abstract")).start();
                     }
 
                     // Find hashkeys from imported node
@@ -167,10 +187,10 @@ public class FetchMetadataTask implements Runnable {
                     for (int j = 0; j < hashkeys.getLength(); j++) {
                         Node hashkey = hashkeys.item(j);
                         if (hashkey != null) {
-                            if ((this.fulltextLimit > 0 && countFulltext <= this.fulltextLimit)) {
+                            if ((this.contentLimit > 0 && countFulltext <= this.contentLimit)) {
                                 identifiers.get(identifier).add(hashkey.getTextContent());
                                 countFulltext++;
-                            } else if (this.fulltextLimit == 0){
+                            } else if (this.contentLimit == 0){
                                 identifiers.get(identifier).add(hashkey.getTextContent());
                             }
                         }
@@ -198,15 +218,20 @@ public class FetchMetadataTask implements Runnable {
                                     outputStream = new FileOutputStream(downloadFile, false);
                                     IOUtils.copy(fullTextInputStream, outputStream);
                                     storeRESTClient.storeFile(downloadFile, archiveId + "/fulltext", identifier + ".pdf");
+
+                                    countFulltext++;
+                                    final int countFull = countFulltext;
+                                    if (countFull > 0 && countFull % 10 == 0)
+                                        new Thread(() -> producer.send("Corpus Building Progress: " + countFull + " fulltext")).start();
                                 }
                                 IOUtils.closeQuietly(fullTextInputStream);
                                 IOUtils.closeQuietly(outputStream);
                             }
                         }
                     } else {
-                        if ((this.fulltextLimit > 0 && countFulltext > this.fulltextLimit)) {
+                        if ((this.contentLimit > 0 && countFulltext > this.contentLimit)) {
                             break;
-                        } else if (this.fulltextLimit > 0) {
+                        } else if (this.contentLimit > 0) {
                             countFulltext++;
                         }
 
@@ -217,6 +242,11 @@ public class FetchMetadataTask implements Runnable {
                             outputStream = new FileOutputStream(downloadFile, false);
                             IOUtils.copy(fullTextInputStream, outputStream);
                             storeRESTClient.storeFile(downloadFile, archiveId + "/fulltext", identifier + ".pdf");
+
+                            countFulltext++;
+                            final int countFull = countFulltext;
+                            if (countFull > 0 && countFull % 10 == 0)
+                                new Thread(() -> producer.send("Corpus Building Progress: " + countFull + " fulltext")).start();
                         }
                         IOUtils.closeQuietly(fullTextInputStream);
                         IOUtils.closeQuietly(outputStream);

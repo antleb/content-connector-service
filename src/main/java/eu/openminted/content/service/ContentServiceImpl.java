@@ -17,8 +17,8 @@ import java.util.List;
 @Component
 public class ContentServiceImpl implements ContentService {
 
-    @org.springframework.beans.factory.annotation.Value("${fulltext.limit:0}")
-    private Integer fulltextLimit;
+    @org.springframework.beans.factory.annotation.Value("${content.limit:0}")
+    private Integer contentLimit;
 
     @Autowired
     private JMSProducer producer;
@@ -85,7 +85,7 @@ public class ContentServiceImpl implements ContentService {
     @Override
     public ServiceStatus status() {
         ServiceStatus serviceStatus = new ServiceStatus();
-        serviceStatus.setMaxFulltextDocuments(fulltextLimit);
+        serviceStatus.setMaxFulltextDocuments(contentLimit);
         new Thread(() -> {
             producer.send("Content service status: " +
                     "maxFulltextDocuments: " + serviceStatus.getMaxFulltextDocuments());
