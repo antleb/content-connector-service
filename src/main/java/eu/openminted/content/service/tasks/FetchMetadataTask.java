@@ -1,11 +1,14 @@
 package eu.openminted.content.service.tasks;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import eu.openminted.content.connector.ContentConnector;
 import eu.openminted.content.connector.Query;
+import eu.openminted.content.connector.SearchResult;
 import eu.openminted.content.service.dao.CorpusBuilderInfoDao;
 import eu.openminted.content.service.extensions.CacheClient;
 import eu.openminted.content.service.extensions.JMSProducer;
 import eu.openminted.content.service.model.CorpusBuilderInfoModel;
+import eu.openminted.corpus.CorpusState;
 import eu.openminted.corpus.CorpusStatus;
 import eu.openminted.store.restclient.StoreRESTClient;
 import org.apache.commons.io.IOUtils;
@@ -41,6 +44,7 @@ public class FetchMetadataTask implements Runnable {
     private boolean isInterrupted;
     private int contentLimit;
     private JMSProducer producer;
+    private CorpusState corpusState;
 
     public InputStream getInputStream() {
         return inputStream;
@@ -68,6 +72,8 @@ public class FetchMetadataTask implements Runnable {
         this.tempDirectoryPath = tempDirectoryPath;
         this.contentLimit = contentLimit;
         this.producer = producer;
+        this.corpusState = new CorpusState();
+        this.corpusState.setConnector(this.connector.getSourceName());
     }
 
     @Override
@@ -105,6 +111,14 @@ public class FetchMetadataTask implements Runnable {
                         && corpusBuilderInfoModel.getStatus().equalsIgnoreCase(CorpusStatus.CREATED.toString()))
                         || corpusBuilderInfoModel == null) {
                     this.cancel();
+                } else {
+                    corpusState.setId(corpusId);
+                    corpusState.setCurrentStatus(CorpusStatus.valueOf(corpusBuilderInfoModel.getStatus()));
+                    SearchResult searchResult = connector.search(query);
+                    if (searchResult != null) {
+                        corpusState.setTotalHits(searchResult.getTotalHits());
+                        corpusState.setCurrentProgress(0);
+                    }
                 }
             }
         };
@@ -132,8 +146,9 @@ public class FetchMetadataTask implements Runnable {
 
         int countFulltext = 0;
         int countMetadata = 0;
-        int countAbstract = 0;
         if (nodes != null) {
+            corpusState.setCurrentStatus(CorpusStatus.PROCESSING_METADATA);
+
             for (int i = 0; i < nodes.getLength(); i++) {
                 if (isInterrupted) break;
                 Node imported = currentDoc.importNode(nodes.item(i), true);
@@ -152,10 +167,11 @@ public class FetchMetadataTask implements Runnable {
                     writeToFile(imported, metadataFile);
                     storeRESTClient.storeFile(metadataFile, archiveId + "/metadata", identifier + ".xml");
                     countMetadata++;
-                    final int countMeta = countMetadata;
-                    if (countMeta > 0 && countMeta % 10 == 0)
-                        new Thread(() -> producer.send("Corpus Building Progress: " + countMeta + " metadata")).start();
-
+                    corpusState.setCurrentProgress(countMetadata);
+                    if (countMetadata > 0 && countMetadata % 10 == 0) {
+                        final String corpusStateJson = new ObjectMapper().writeValueAsString(corpusState);
+                        new Thread(() -> producer.send(corpusStateJson)).start();
+                    }
 
                     // Find Abstracts from imported node
                     XPathExpression abstractListExpression = xpath.compile("document/publication/abstracts/abstract");
@@ -174,10 +190,6 @@ public class FetchMetadataTask implements Runnable {
                         fileWriter.flush();
                         fileWriter.close();
                         storeRESTClient.storeFile(abstractFile, archiveId + "/abstract", identifier + ".txt");
-                        countAbstract++;
-                        final int countAbstr = countAbstract;
-                        if (countAbstr > 0 && countAbstr % 10 == 0)
-                            new Thread(() -> producer.send("Corpus Building Progress: " + countAbstr + " abstract")).start();
                     }
 
                     // Find hashkeys from imported node
@@ -191,6 +203,7 @@ public class FetchMetadataTask implements Runnable {
                                 identifiers.get(identifier).add(hashkey.getTextContent());
                                 countFulltext++;
                             } else if (this.contentLimit == 0){
+                                countFulltext++;
                                 identifiers.get(identifier).add(hashkey.getTextContent());
                             }
                         }
@@ -203,11 +216,12 @@ public class FetchMetadataTask implements Runnable {
             }
 
             IOUtils.closeQuietly(inputStream);
-
+            corpusState.setTotalFulltext(countFulltext);
             countFulltext = 0;
             for (String identifier : identifiers.keySet()) {
                 if (isInterrupted) break;
                 try {
+                    corpusState.setCurrentStatus(CorpusStatus.PROCESSING_FULLTEXT);
                     if (identifiers.get(identifier).size() > 0) {
                         for (String hashKey : identifiers.get(identifier)) {
                             if (hashKey != null && !hashKey.isEmpty()) {
@@ -218,11 +232,12 @@ public class FetchMetadataTask implements Runnable {
                                     outputStream = new FileOutputStream(downloadFile, false);
                                     IOUtils.copy(fullTextInputStream, outputStream);
                                     storeRESTClient.storeFile(downloadFile, archiveId + "/fulltext", identifier + ".pdf");
-
                                     countFulltext++;
-                                    final int countFull = countFulltext;
-                                    if (countFull > 0 && countFull % 10 == 0)
-                                        new Thread(() -> producer.send("Corpus Building Progress: " + countFull + " fulltext")).start();
+                                    corpusState.setCurrentProgress(countFulltext);
+                                    if (countFulltext > 0 && countFulltext % 10 == 0) {
+                                        final String corpusStateJson = new ObjectMapper().writeValueAsString(corpusState);
+                                        new Thread(() -> producer.send(corpusStateJson)).start();
+                                    }
                                 }
                                 IOUtils.closeQuietly(fullTextInputStream);
                                 IOUtils.closeQuietly(outputStream);
@@ -242,11 +257,12 @@ public class FetchMetadataTask implements Runnable {
                             outputStream = new FileOutputStream(downloadFile, false);
                             IOUtils.copy(fullTextInputStream, outputStream);
                             storeRESTClient.storeFile(downloadFile, archiveId + "/fulltext", identifier + ".pdf");
-
-                            countFulltext++;
-                            final int countFull = countFulltext;
-                            if (countFull > 0 && countFull % 10 == 0)
-                                new Thread(() -> producer.send("Corpus Building Progress: " + countFull + " fulltext")).start();
+                            corpusState.setCurrentProgress(countFulltext);
+                            corpusState.setCurrentProgress(countFulltext);
+                            if (countFulltext > 0 && countFulltext % 10 == 0) {
+                                final String corpusStateJson = new ObjectMapper().writeValueAsString(corpusState);
+                                new Thread(() -> producer.send(corpusStateJson)).start();
+                            }
                         }
                         IOUtils.closeQuietly(fullTextInputStream);
                         IOUtils.closeQuietly(outputStream);
