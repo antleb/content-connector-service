@@ -101,12 +101,12 @@ public class CacheClientImpl implements CacheClient {
             boolean existsInCache = myCache.contains(hashΚey);
 
             if (!existsInCache) {
-                log.debug("document not found... Inserting document now!");
+                log.debug("Document not found... Looking for document in connector!");
                 hashΚey = setDocument(connector, identifier);
             }
 
             if (existsInCache || !hashΚey.isEmpty()) {
-                log.debug("document found... Retrieving document now!");
+                log.debug("Document found... Retrieving document!");
                 Data retrievedData = myCache.getData(hashΚey);
                 if (retrievedData != null) {
                     inputStream = new ByteArrayInputStream(retrievedData.getBytes());

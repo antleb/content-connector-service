@@ -87,72 +87,8 @@ public class ContentServiceController {
             throw new ServiceAuthenticationException();
 
         Corpus corpus = corpusBuilder.prepareCorpus(query);
-        String username = "";
         if (corpus != null) {
-            ContactInfo contactInfo = new ContactInfo();
-            List<Name> names = new ArrayList<>();
-            List<String> emails = new ArrayList<>();
-            List<PersonInfo> personInfos = new ArrayList<>();
-
-            PersonInfo personInfo = new PersonInfo();
-
-            if (SecurityContextHolder.getContext() != null && SecurityContextHolder.getContext().getAuthentication() instanceof OIDCAuthenticationToken) {
-                OIDCAuthenticationToken authentication = (OIDCAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
-
-                Name name = new Name();
-                Name familyName = new Name();
-                Name givenName = new Name();
-                Name preferredUsername = new Name();
-
-                name.setValue(authentication.getUserInfo().getName());
-                familyName.setValue(authentication.getUserInfo().getFamilyName());
-                givenName.setValue(authentication.getUserInfo().getGivenName());
-                preferredUsername.setValue(authentication.getUserInfo().getPreferredUsername());
-
-                name.setLang("en");
-                familyName.setLang("en");
-                givenName.setLang("en");
-                preferredUsername.setLang("en");
-
-                names.add(name);
-                names.add(familyName);
-                names.add(givenName);
-                names.add(preferredUsername);
-
-                emails.add(authentication.getUserInfo().getEmail());
-
-                personInfo.setNames(names);
-                CommunicationInfo communicationInfo = new CommunicationInfo();
-                communicationInfo.setEmails(emails);
-
-                personInfo.setCommunicationInfo(communicationInfo);
-                personInfos.add(personInfo);
-
-                contactInfo.setContactEmail(authentication.getUserInfo().getEmail());
-                contactInfo.setContactPersons(personInfos);
-
-                username = authentication.getUserInfo().getName();
-                if (username == null) username = "";
-            } else {
-                log.warn("There is no valid authentication token. Going with default email.");
-                Name name = new Name();
-                name.setValue(tokenName);
-                name.setLang("en");
-
-                names.add(name);
-                personInfo.setNames(names);
-                personInfos.add(personInfo);
-
-                contactInfo.setContactEmail(tokenEmail);
-                contactInfo.setContactPersons(personInfos);
-
-                username = tokenName;
-            }
-            corpus.getCorpusInfo().setContactInfo(contactInfo);
-            for (Description description : corpus.getCorpusInfo().getIdentificationInfo().getDescriptions()) {
-                if (username != null || !username.isEmpty())
-                    description.setValue(description.getValue().replaceAll("\\[user_name\\]", username));
-            }
+            populateCorpus(corpus);
         }
         return corpus;
     }
@@ -173,7 +109,6 @@ public class ContentServiceController {
         metadataHeaderInfo.setMetadataRecordIdentifier(metadataIdentifier);
         corpus.setMetadataHeaderInfo(metadataHeaderInfo);
         corpusBuilder.buildCorpus(corpus);
-        System.out.println(corpus.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue());
     }
 
     @PreAuthorize("hasRole('ROLE_USER')")
@@ -209,5 +144,74 @@ public class ContentServiceController {
 //        return new ResponseEntity<>(SecurityContextHolder.getContext().getAuthentication(), HttpStatus.OK);
         OIDCAuthenticationToken authentication = (OIDCAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
         return new ResponseEntity<>(authentication.getUserInfo().toJson().toString(), HttpStatus.OK);
+    }
+
+    private void populateCorpus(Corpus corpus) {
+        String username = "";
+        ContactInfo contactInfo = new ContactInfo();
+        List<Name> names = new ArrayList<>();
+        List<String> emails = new ArrayList<>();
+        List<PersonInfo> personInfos = new ArrayList<>();
+        CommunicationInfo communicationInfo = new CommunicationInfo();
+
+        PersonInfo personInfo = new PersonInfo();
+
+        if (SecurityContextHolder.getContext() != null && SecurityContextHolder.getContext().getAuthentication() instanceof OIDCAuthenticationToken) {
+            OIDCAuthenticationToken authentication = (OIDCAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+            getNamesFromAuthenticationToken(authentication, names);
+            personInfo.setNames(names);
+
+            emails.add(authentication.getUserInfo().getEmail());
+            communicationInfo.setEmails(emails);
+            personInfo.setCommunicationInfo(communicationInfo);
+            personInfos.add(personInfo);
+
+            contactInfo.setContactEmail(authentication.getUserInfo().getEmail());
+            contactInfo.setContactPersons(personInfos);
+
+            username = authentication.getUserInfo().getName();
+            if (username == null) username = "";
+        } else {
+            log.warn("There is no valid authentication token. Going with default email.");
+            Name name = new Name();
+            name.setValue(tokenName);
+            name.setLang("en");
+
+            names.add(name);
+            personInfo.setNames(names);
+            personInfos.add(personInfo);
+
+            contactInfo.setContactEmail(tokenEmail);
+            contactInfo.setContactPersons(personInfos);
+
+            username = tokenName;
+        }
+        corpus.getCorpusInfo().setContactInfo(contactInfo);
+        for (Description description : corpus.getCorpusInfo().getIdentificationInfo().getDescriptions()) {
+            if (username != null || !username.isEmpty())
+                description.setValue(description.getValue().replaceAll("\\[user_name\\]", username));
+        }
+    }
+
+    private void getNamesFromAuthenticationToken(OIDCAuthenticationToken authentication, List<Name> names) {
+        Name name = new Name();
+        Name familyName = new Name();
+        Name givenName = new Name();
+        Name preferredUsername = new Name();
+
+        name.setValue(authentication.getUserInfo().getName());
+        familyName.setValue(authentication.getUserInfo().getFamilyName());
+        givenName.setValue(authentication.getUserInfo().getGivenName());
+        preferredUsername.setValue(authentication.getUserInfo().getPreferredUsername());
+
+        name.setLang("en");
+        familyName.setLang("en");
+        givenName.setLang("en");
+        preferredUsername.setLang("en");
+
+        names.add(name);
+        names.add(familyName);
+        names.add(givenName);
+        names.add(preferredUsername);
     }
 }

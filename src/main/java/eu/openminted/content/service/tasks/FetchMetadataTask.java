@@ -1,5 +1,6 @@
 package eu.openminted.content.service.tasks;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import eu.openminted.content.connector.ContentConnector;
 import eu.openminted.content.connector.Query;
@@ -148,20 +149,51 @@ public class FetchMetadataTask implements Runnable {
         int countMetadata = 0;
         if (nodes != null) {
             corpusState.setCurrentStatus(CorpusStatus.PROCESSING_METADATA);
+            sendCorpusState(corpusState);
 
             for (int i = 0; i < nodes.getLength(); i++) {
                 if (isInterrupted) break;
+                if (contentLimit > 0 && contentLimit <= countMetadata) break;
+
                 Node imported = currentDoc.importNode(nodes.item(i), true);
                 XPathExpression identifierExpression;
                 try {
                     identifierExpression = xpath.compile("metadataHeaderInfo/metadataRecordIdentifier/text()");
                     String identifier = (String) identifierExpression.evaluate(imported, XPathConstants.STRING);
 
-                    if (identifier == null || identifier.isEmpty()) {
-                        log.info("MetadataDocument Identifier is empty or null. Skipping current document.");
+                    if (identifier == null || identifier.isEmpty() || identifier.contains("dedup")) {
+                        if (corpusState.getTotalHits() >= 1)
+                            corpusState.setTotalHits(corpusState.getTotalHits() - 1);
+                        log.debug("MetadataDocument Identifier is empty or null or dedup. Skipping current document.");
                         continue;
                     } else {
-                        identifiers.put(identifier, new ArrayList<>());
+                        // Find hashkeys from imported node
+                        XPathExpression distributionListExpression = xpath.compile("document/publication/distributions/documentDistributionInfo/hashkey");
+                        NodeList hashkeys = (NodeList) distributionListExpression.evaluate(imported, XPathConstants.NODESET);
+
+                        boolean hasFulltext = false;
+
+                        if (hashkeys != null && hashkeys.getLength() > 0) {
+                            for (int j = 0; j < hashkeys.getLength(); j++) {
+                                Node hashkey = hashkeys.item(j);
+                                if (hashkey != null) {
+                                    hasFulltext = true;
+
+                                    if (!identifiers.keySet().contains(identifier))
+                                        identifiers.put(identifier, new ArrayList<>());
+
+                                    identifiers.get(identifier).add(hashkey.getTextContent());
+                                    countFulltext++;
+                                }
+                            }
+                        } else {
+                            hasFulltext = false;
+                        }
+
+                        if (!hasFulltext) {
+                            log.debug("MetadataDocument Identifier does not contain fulltext. Skipping current document.");
+                            continue;
+                        }
                     }
 
                     writeToFile(imported, metadataFile);
@@ -169,8 +201,7 @@ public class FetchMetadataTask implements Runnable {
                     countMetadata++;
                     corpusState.setCurrentProgress(countMetadata);
                     if (countMetadata > 0 && countMetadata % 10 == 0) {
-                        final String corpusStateJson = new ObjectMapper().writeValueAsString(corpusState);
-                        new Thread(() -> producer.send(corpusStateJson)).start();
+                        sendCorpusState(corpusState);
                     }
 
                     // Find Abstracts from imported node
@@ -191,23 +222,6 @@ public class FetchMetadataTask implements Runnable {
                         fileWriter.close();
                         storeRESTClient.storeFile(abstractFile, archiveId + "/abstract", identifier + ".txt");
                     }
-
-                    // Find hashkeys from imported node
-                    XPathExpression distributionListExpression = xpath.compile("document/publication/distributions/documentDistributionInfo/hashkey");
-                    NodeList hashkeys = (NodeList) distributionListExpression.evaluate(imported, XPathConstants.NODESET);
-
-                    for (int j = 0; j < hashkeys.getLength(); j++) {
-                        Node hashkey = hashkeys.item(j);
-                        if (hashkey != null) {
-                            if ((this.contentLimit > 0 && countFulltext <= this.contentLimit)) {
-                                identifiers.get(identifier).add(hashkey.getTextContent());
-                                countFulltext++;
-                            } else if (this.contentLimit == 0){
-                                countFulltext++;
-                                identifiers.get(identifier).add(hashkey.getTextContent());
-                            }
-                        }
-                    }
                 } catch (XPathExpressionException e) {
                     log.error("FetchMetadataTask.run-Fetching Metadata -XPathExpressionException ", e);
                 } catch (IOException e) {
@@ -215,13 +229,20 @@ public class FetchMetadataTask implements Runnable {
                 }
             }
 
-            IOUtils.closeQuietly(inputStream);
-            corpusState.setTotalFulltext(countFulltext);
-            countFulltext = 0;
-            for (String identifier : identifiers.keySet()) {
-                if (isInterrupted) break;
-                try {
-                    corpusState.setCurrentStatus(CorpusStatus.PROCESSING_FULLTEXT);
+            try {
+                sendCorpusState(corpusState);
+                // closing previous stream
+                IOUtils.closeQuietly(inputStream);
+                corpusState.setTotalFulltext(countFulltext);
+
+                // Reseting counter of fulltexts
+                countFulltext = 0;
+                corpusState.setCurrentProgress(countFulltext);
+                corpusState.setCurrentStatus(CorpusStatus.PROCESSING_FULLTEXT);
+                sendCorpusState(corpusState);
+
+                for (String identifier : identifiers.keySet()) {
+                    if (isInterrupted) break;
                     if (identifiers.get(identifier).size() > 0) {
                         for (String hashKey : identifiers.get(identifier)) {
                             if (hashKey != null && !hashKey.isEmpty()) {
@@ -235,43 +256,21 @@ public class FetchMetadataTask implements Runnable {
                                     countFulltext++;
                                     corpusState.setCurrentProgress(countFulltext);
                                     if (countFulltext > 0 && countFulltext % 10 == 0) {
-                                        final String corpusStateJson = new ObjectMapper().writeValueAsString(corpusState);
-                                        new Thread(() -> producer.send(corpusStateJson)).start();
+                                        sendCorpusState(corpusState);
                                     }
                                 }
                                 IOUtils.closeQuietly(fullTextInputStream);
                                 IOUtils.closeQuietly(outputStream);
                             }
                         }
-                    } else {
-                        if ((this.contentLimit > 0 && countFulltext > this.contentLimit)) {
-                            break;
-                        } else if (this.contentLimit > 0) {
-                            countFulltext++;
-                        }
-
-                        InputStream fullTextInputStream = cacheClient.getDocument(connector, identifier);
-                        FileOutputStream outputStream = null;
-                        if (fullTextInputStream != null) {
-
-                            outputStream = new FileOutputStream(downloadFile, false);
-                            IOUtils.copy(fullTextInputStream, outputStream);
-                            storeRESTClient.storeFile(downloadFile, archiveId + "/fulltext", identifier + ".pdf");
-                            corpusState.setCurrentProgress(countFulltext);
-                            corpusState.setCurrentProgress(countFulltext);
-                            if (countFulltext > 0 && countFulltext % 10 == 0) {
-                                final String corpusStateJson = new ObjectMapper().writeValueAsString(corpusState);
-                                new Thread(() -> producer.send(corpusStateJson)).start();
-                            }
-                        }
-                        IOUtils.closeQuietly(fullTextInputStream);
-                        IOUtils.closeQuietly(outputStream);
                     }
-                } catch (FileNotFoundException e) {
-                    log.error("FetchMetadataTask.run- Downloading fulltext -FileNotFoundException ", e);
-                } catch (IOException e) {
-                    log.error("FetchMetadataTask.run- Downloading fulltext -IOException ", e);
                 }
+
+                sendCorpusState(corpusState);
+            } catch (FileNotFoundException e) {
+                log.error("FetchMetadataTask.run- Downloading fulltext -FileNotFoundException ", e);
+            } catch (IOException e) {
+                log.error("FetchMetadataTask.run- Downloading fulltext -IOException ", e);
             }
         }
 
@@ -298,5 +297,16 @@ public class FetchMetadataTask implements Runnable {
 
     public void setCacheClient(CacheClient cacheClient) {
         this.cacheClient = cacheClient;
+    }
+
+    private void sendCorpusState(CorpusState corpusState) {
+        final String corpusStateJson;
+        try {
+            corpusStateJson = new ObjectMapper().writeValueAsString(corpusState);
+            new Thread(() -> producer.send(corpusStateJson)).start();
+        } catch (JsonProcessingException e) {
+            e.printStackTrace();
+            log.error("FetchMetadataTask.run-JsonProcessingException ", e);
+        }
     }
 }
