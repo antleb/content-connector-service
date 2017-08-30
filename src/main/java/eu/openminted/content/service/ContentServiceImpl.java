@@ -5,7 +5,7 @@ import eu.openminted.content.connector.Query;
 import eu.openminted.content.connector.SearchResult;
 import eu.openminted.content.connector.faceting.OMTDFacetEnum;
 import eu.openminted.content.connector.faceting.OMTDFacetInitializer;
-import eu.openminted.content.service.extensions.JMSProducer;
+import eu.openminted.content.service.messages.JMSProducer;
 import eu.openminted.registry.core.domain.Facet;
 import eu.openminted.registry.core.domain.Value;
 import org.springframework.beans.factory.annotation.Autowired;

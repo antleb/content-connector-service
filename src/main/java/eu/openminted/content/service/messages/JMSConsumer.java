@@ -1,13 +1,16 @@
-package eu.openminted.content.service.extensions;
+package eu.openminted.content.service.messages;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import eu.openminted.content.service.mail.EmailMessage;
+import eu.openminted.content.service.mail.JavaMailer;
+import eu.openminted.corpus.CorpusBuildingState;
 import org.apache.activemq.ActiveMQConnectionFactory;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import javax.jms.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.io.IOException;
 
 @Component
 public class JMSConsumer implements ExceptionListener, MessageListener {
@@ -71,22 +74,40 @@ public class JMSConsumer implements ExceptionListener, MessageListener {
                 String text = textMessage.getText();
                 log.info("Message Received: " + text);
 
-                if (text.contains("email")) {
-                    // Recipient's email ID needs to be mentioned.
-                    String to = "";
-                    String subject = "";
+                try {
+                    JMSMessage messageReceived = new ObjectMapper().readValue(text, JMSMessage.class);
 
-                    Matcher match = Pattern.compile("^email<(.*)>subject<(.*)>(.*$)").matcher(text);
-                    if (match.find()) {
-                        to = match.group(1);
-                        subject = match.group(2);
-                        text = match.group(3);
+                    if (messageReceived.getType().equals(CorpusBuildingState.class.toString())) {
+                        CorpusBuildingState corpusBuildingState = new ObjectMapper().readValue(messageReceived.getMessage(), CorpusBuildingState.class);
+                        log.info("State of corpus building: " + corpusBuildingState);
+                    } else if (messageReceived.getType().equals(EmailMessage.class.toString())) {
+                        EmailMessage emailMessage = new ObjectMapper().readValue(messageReceived.getMessage(), EmailMessage.class);
+                        if (emailMessage == null
+                                || emailMessage.getRecipient() == null
+                                || emailMessage.getRecipient().isEmpty()) return;
+                        javaMailer.sendEmail(emailMessage.getRecipient(), emailMessage.getSubject(), emailMessage.getText());
                     }
-
-                    if (to.isEmpty()) return;
-
-                    javaMailer.sendEmail(to, subject, text);
+                } catch (IOException e) {
+                    log.error(e);
                 }
+
+
+//                if (text.contains("email")) {
+//                    // Recipient's email ID needs to be mentioned.
+//                    String to = "";
+//                    String subject = "";
+//
+//                    Matcher match = Pattern.compile("^email<(.*)>subject<(.*)>(.*$)").matcher(text);
+//                    if (match.find()) {
+//                        to = match.group(1);
+//                        subject = match.group(2);
+//                        text = match.group(3);
+//                    }
+//
+//                    if (to.isEmpty()) return;
+//
+//                    javaMailer.sendEmail(to, subject, text);
+//                }
             } catch (JMSException e) {
                 log.error("Error Receiving Message", e);
             }

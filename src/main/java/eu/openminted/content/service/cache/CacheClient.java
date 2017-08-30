@@ -1,4 +1,4 @@
-package eu.openminted.content.service.extensions;
+package eu.openminted.content.service.cache;
 
 import eu.openminted.content.connector.ContentConnector;
 

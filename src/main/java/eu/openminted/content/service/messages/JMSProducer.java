@@ -1,5 +1,7 @@
-package eu.openminted.content.service.extensions;
+package eu.openminted.content.service.messages;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.activemq.ActiveMQConnectionFactory;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,6 +46,18 @@ public class JMSProducer {
             connection.close();
         } catch (JMSException e) {
             log.error("Caught Exception", e);
+        }
+    }
+
+    public void sendMessage(String type, Object object) {
+        try {
+            JMSMessage jmsMessage = new JMSMessage();
+            jmsMessage.setType(type);
+            jmsMessage.setMessage(new ObjectMapper().writeValueAsString(object));
+            String messageJson = new ObjectMapper().writeValueAsString(jmsMessage);
+            new Thread(() -> this.send(messageJson)).start();
+        } catch (JsonProcessingException e) {
+            e.printStackTrace();
         }
     }
 }

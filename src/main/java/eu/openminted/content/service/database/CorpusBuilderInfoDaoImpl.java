@@ -1,4 +1,4 @@
-package eu.openminted.content.service.dao;
+package eu.openminted.content.service.database;
 
 import eu.openminted.content.service.model.CorpusBuilderInfoModel;
 import eu.openminted.corpus.CorpusStatus;

@@ -1,4 +1,4 @@
-package eu.openminted.content.service.extensions;
+package eu.openminted.content.service.mail;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;

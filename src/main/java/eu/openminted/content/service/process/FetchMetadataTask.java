@@ -1,15 +1,13 @@
-package eu.openminted.content.service.tasks;
+package eu.openminted.content.service.process;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import eu.openminted.content.connector.ContentConnector;
 import eu.openminted.content.connector.Query;
 import eu.openminted.content.connector.SearchResult;
-import eu.openminted.content.service.dao.CorpusBuilderInfoDao;
-import eu.openminted.content.service.extensions.CacheClient;
-import eu.openminted.content.service.extensions.JMSProducer;
+import eu.openminted.content.service.database.CorpusBuilderInfoDao;
+import eu.openminted.content.service.cache.CacheClient;
+import eu.openminted.content.service.messages.JMSProducer;
 import eu.openminted.content.service.model.CorpusBuilderInfoModel;
-import eu.openminted.corpus.CorpusState;
+import eu.openminted.corpus.CorpusBuildingState;
 import eu.openminted.corpus.CorpusStatus;
 import eu.openminted.store.restclient.StoreRESTClient;
 import org.apache.commons.io.IOUtils;
@@ -45,7 +43,7 @@ public class FetchMetadataTask implements Runnable {
     private boolean isInterrupted;
     private int contentLimit;
     private JMSProducer producer;
-    private CorpusState corpusState;
+    private CorpusBuildingState corpusBuildingState;
 
     public InputStream getInputStream() {
         return inputStream;
@@ -73,8 +71,8 @@ public class FetchMetadataTask implements Runnable {
         this.tempDirectoryPath = tempDirectoryPath;
         this.contentLimit = contentLimit;
         this.producer = producer;
-        this.corpusState = new CorpusState();
-        this.corpusState.setConnector(this.connector.getSourceName());
+        this.corpusBuildingState = new CorpusBuildingState();
+        this.corpusBuildingState.setConnector(this.connector.getSourceName());
     }
 
     @Override
@@ -113,12 +111,12 @@ public class FetchMetadataTask implements Runnable {
                         || corpusBuilderInfoModel == null) {
                     this.cancel();
                 } else {
-                    corpusState.setId(corpusId);
-                    corpusState.setCurrentStatus(CorpusStatus.valueOf(corpusBuilderInfoModel.getStatus()));
+                    corpusBuildingState.setId(corpusId);
+                    corpusBuildingState.setCurrentStatus(corpusBuilderInfoModel.getStatus());
                     SearchResult searchResult = connector.search(query);
                     if (searchResult != null) {
-                        corpusState.setTotalHits(searchResult.getTotalHits());
-                        corpusState.setCurrentProgress(0);
+                        corpusBuildingState.setTotalHits(searchResult.getTotalHits());
+                        corpusBuildingState.setMetadataProgress(0);
                     }
                 }
             }
@@ -145,15 +143,19 @@ public class FetchMetadataTask implements Runnable {
             log.error("FetchMetadataTask.run-XPathExpressionException ", e);
         }
 
-        int countFulltext = 0;
-        int countMetadata = 0;
+        int totalFulltext = 0;
+        int totalRejected = 0;
+        int metadataProgress = 0;
+        int fulltextProgress = 0;
+
+
         if (nodes != null) {
-            corpusState.setCurrentStatus(CorpusStatus.PROCESSING_METADATA);
-            sendCorpusState(corpusState);
+            corpusBuildingState.setCurrentStatus(CorpusStatus.PROCESSING_METADATA.toString());
+            producer.sendMessage(CorpusBuildingState.class.toString(), corpusBuildingState);
 
             for (int i = 0; i < nodes.getLength(); i++) {
                 if (isInterrupted) break;
-                if (contentLimit > 0 && contentLimit <= countMetadata) break;
+                if (contentLimit > 0 && contentLimit <= metadataProgress) break;
 
                 Node imported = currentDoc.importNode(nodes.item(i), true);
                 XPathExpression identifierExpression;
@@ -162,8 +164,7 @@ public class FetchMetadataTask implements Runnable {
                     String identifier = (String) identifierExpression.evaluate(imported, XPathConstants.STRING);
 
                     if (identifier == null || identifier.isEmpty() || identifier.contains("dedup")) {
-                        if (corpusState.getTotalHits() >= 1)
-                            corpusState.setTotalHits(corpusState.getTotalHits() - 1);
+                        totalRejected++;
                         log.debug("MetadataDocument Identifier is empty or null or dedup. Skipping current document.");
                         continue;
                     } else {
@@ -183,7 +184,7 @@ public class FetchMetadataTask implements Runnable {
                                         identifiers.put(identifier, new ArrayList<>());
 
                                     identifiers.get(identifier).add(hashkey.getTextContent());
-                                    countFulltext++;
+                                    totalFulltext++;
                                 }
                             }
                         } else {
@@ -192,17 +193,13 @@ public class FetchMetadataTask implements Runnable {
 
                         if (!hasFulltext) {
                             log.debug("MetadataDocument Identifier does not contain fulltext. Skipping current document.");
+                            totalRejected++;
                             continue;
                         }
                     }
 
                     writeToFile(imported, metadataFile);
                     storeRESTClient.storeFile(metadataFile, archiveId + "/metadata", identifier + ".xml");
-                    countMetadata++;
-                    corpusState.setCurrentProgress(countMetadata);
-                    if (countMetadata > 0 && countMetadata % 10 == 0) {
-                        sendCorpusState(corpusState);
-                    }
 
                     // Find Abstracts from imported node
                     XPathExpression abstractListExpression = xpath.compile("document/publication/abstracts/abstract");
@@ -222,6 +219,13 @@ public class FetchMetadataTask implements Runnable {
                         fileWriter.close();
                         storeRESTClient.storeFile(abstractFile, archiveId + "/abstract", identifier + ".txt");
                     }
+
+                    metadataProgress++;
+                    corpusBuildingState.setTotalRejected(totalRejected);
+                    corpusBuildingState.setMetadataProgress(metadataProgress);
+                    if (metadataProgress > 0 && metadataProgress % 10 == 0) {
+                        producer.sendMessage(CorpusBuildingState.class.toString(), corpusBuildingState);
+                    }
                 } catch (XPathExpressionException e) {
                     log.error("FetchMetadataTask.run-Fetching Metadata -XPathExpressionException ", e);
                 } catch (IOException e) {
@@ -230,16 +234,12 @@ public class FetchMetadataTask implements Runnable {
             }
 
             try {
-                sendCorpusState(corpusState);
+                producer.sendMessage(CorpusBuildingState.class.toString(), corpusBuildingState);
                 // closing previous stream
                 IOUtils.closeQuietly(inputStream);
-                corpusState.setTotalFulltext(countFulltext);
-
-                // Reseting counter of fulltexts
-                countFulltext = 0;
-                corpusState.setCurrentProgress(countFulltext);
-                corpusState.setCurrentStatus(CorpusStatus.PROCESSING_FULLTEXT);
-                sendCorpusState(corpusState);
+                corpusBuildingState.setTotalFulltext(totalFulltext);
+                corpusBuildingState.setCurrentStatus(CorpusStatus.PROCESSING_FULLTEXT.toString());
+                producer.sendMessage(CorpusBuildingState.class.toString(), corpusBuildingState);
 
                 for (String identifier : identifiers.keySet()) {
                     if (isInterrupted) break;
@@ -253,10 +253,10 @@ public class FetchMetadataTask implements Runnable {
                                     outputStream = new FileOutputStream(downloadFile, false);
                                     IOUtils.copy(fullTextInputStream, outputStream);
                                     storeRESTClient.storeFile(downloadFile, archiveId + "/fulltext", identifier + ".pdf");
-                                    countFulltext++;
-                                    corpusState.setCurrentProgress(countFulltext);
-                                    if (countFulltext > 0 && countFulltext % 10 == 0) {
-                                        sendCorpusState(corpusState);
+                                    fulltextProgress++;
+                                    corpusBuildingState.setFulltextProgress(fulltextProgress);
+                                    if (totalFulltext > 0 && totalFulltext % 10 == 0) {
+                                        producer.sendMessage(CorpusBuildingState.class.toString(), corpusBuildingState);
                                     }
                                 }
                                 IOUtils.closeQuietly(fullTextInputStream);
@@ -266,7 +266,7 @@ public class FetchMetadataTask implements Runnable {
                     }
                 }
 
-                sendCorpusState(corpusState);
+                producer.sendMessage(CorpusBuildingState.class.toString(), corpusBuildingState);
             } catch (FileNotFoundException e) {
                 log.error("FetchMetadataTask.run- Downloading fulltext -FileNotFoundException ", e);
             } catch (IOException e) {
@@ -299,14 +299,4 @@ public class FetchMetadataTask implements Runnable {
         this.cacheClient = cacheClient;
     }
 
-    private void sendCorpusState(CorpusState corpusState) {
-        final String corpusStateJson;
-        try {
-            corpusStateJson = new ObjectMapper().writeValueAsString(corpusState);
-            new Thread(() -> producer.send(corpusStateJson)).start();
-        } catch (JsonProcessingException e) {
-            e.printStackTrace();
-            log.error("FetchMetadataTask.run-JsonProcessingException ", e);
-        }
-    }
 }

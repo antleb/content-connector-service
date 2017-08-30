@@ -1,11 +1,15 @@
-package eu.openminted.content.service.extensions;
+package eu.openminted.content.service.process;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import eu.openminted.content.connector.ContentConnector;
 import eu.openminted.content.connector.Query;
-import eu.openminted.content.service.dao.CorpusBuilderInfoDao;
+import eu.openminted.content.service.cache.CacheClient;
+import eu.openminted.content.service.database.CorpusBuilderInfoDao;
+import eu.openminted.content.service.mail.EmailMessage;
+import eu.openminted.content.service.messages.JMSMessage;
+import eu.openminted.content.service.messages.JMSProducer;
 import eu.openminted.content.service.model.CorpusBuilderInfoModel;
-import eu.openminted.content.service.tasks.FetchMetadataTask;
 import eu.openminted.corpus.CorpusStatus;
 import eu.openminted.registry.domain.Corpus;
 import eu.openminted.store.restclient.StoreRESTClient;
@@ -139,29 +143,32 @@ public class CorpusBuilderExecutionQueueConsumer {
 
                                 corpusBuilderInfoModel.setStatus(CorpusStatus.CREATED.toString());
                                 corpusBuilderInfoDao.update(corpusBuilderInfoModel.getId(), "status", CorpusStatus.CREATED);
-                                text = "Corpus with ID " + corpusId + " has been created at archive with ID " + corpusBuilderInfoModel.getArchiveId();
+                                text = "Corpus building with ID " + corpusId + " has been created at archive with ID " + corpusBuilderInfoModel.getArchiveId();
 
                                 try {
-                                    String url = registryHost + "/omtd-registry/request/corpus";
-                                    RestTemplate restTemplate = new RestTemplate();
-                                    restTemplate.postForObject(url, corpus, Corpus.class);
-                                    new Thread(() -> producer.send("Corpus Build: Sending corpus with ID " + corpus.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue() + " to registry")).start();
+//                                    String url = registryHost + "/omtd-registry/request/corpus";
+//                                    RestTemplate restTemplate = new RestTemplate();
+//                                    restTemplate.postForObject(url, corpus, Corpus.class);
+//                                    new Thread(() -> producer.send("Corpus Build: Sending corpus with ID " + corpus.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue() + " to registry")).start();
+
+                                    producer.sendMessage("Corpus", corpus);
                                 } catch (Exception e) {
                                     log.error("CorpusBuilderImpl.buildCorpus: Error posting corpus at registry. Error stacktrace is omitted on purpose");
-                                    new Thread(() -> producer.send("Corpus Build: Error sending corpus with  ID " + corpus.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue() + " to registry")).start();
+                                    String errorMessage = "Corpus Build: Error sending corpus with  ID " + corpus.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue() + " to registry";
+                                    producer.sendMessage("Corpus", errorMessage);
                                 }
                             } else {
-                                text = "Corpus with corpusId " + corpusId + " has been interrupted!";
+                                text = "Corpus building with corpusId " + corpusId + " has been interrupted!";
                             }
-
                             if (!corpus.getCorpusInfo().getContactInfo().getContactEmail().isEmpty()) {
-                                text = "email<" + corpus.getCorpusInfo().getContactInfo().getContactEmail() + ">subject<Corpus Build: Your corpus is ready>" + text;
+                                EmailMessage emailMessage = new EmailMessage();
+                                emailMessage.setRecipient(corpus.getCorpusInfo().getContactInfo().getContactEmail());
+                                emailMessage.setSubject("OpenMinTeD Corpus build request");
+                                emailMessage.setText(text);
+
+                                producer.sendMessage(EmailMessage.class.toString(), emailMessage);
                             }
-
-                            final String message = text;
-                            new Thread(() -> producer.send(message)).start();
                         }
-
                     });
                 }
 

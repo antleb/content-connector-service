@@ -4,7 +4,7 @@ import eu.openminted.content.connector.Query;
 import eu.openminted.content.connector.SearchResult;
 import eu.openminted.content.service.ContentService;
 import eu.openminted.content.service.ServiceStatus;
-import eu.openminted.content.service.dao.CorpusBuilderInfoDao;
+import eu.openminted.content.service.database.CorpusBuilderInfoDao;
 import eu.openminted.content.service.exception.ResourceNotFoundException;
 import eu.openminted.content.service.exception.ServiceAuthenticationException;
 import eu.openminted.corpus.CorpusBuilder;
