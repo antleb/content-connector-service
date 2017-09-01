@@ -358,6 +358,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                         corpusBuildingState.setId(corpusMetadata.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue() + "@" + connector.getSourceName());
                         corpusBuildingState.setToken(authenticationSub);
                         corpusBuildingState.setCurrentStatus(CorpusStatus.SUBMITTED.toString());
+                        corpusBuildingState.setConnector(connector.getSourceName());
                         corpusBuildingState.setTotalHits(corpusMetadata.getCorpusInfo().getCorpusSubtypeSpecificInfo().getRawCorpusInfo().getCorpusMediaPartsType().getCorpusTextParts().size());
                         new Thread(() -> producer.sendMessage(CorpusBuildingState.class.toString(), corpusBuildingState)).start();
                     }

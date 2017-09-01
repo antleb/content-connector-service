@@ -165,6 +165,7 @@ public class CorpusBuilderExecutionQueueConsumer {
                                     CorpusBuildingState corpusBuildingState = new CorpusBuildingState();
                                     corpusBuildingState.setId(corpusId + "@" + connector.getSourceName());
                                     corpusBuildingState.setToken(corpusBuilderInfoModel.getToken());
+                                    corpusBuildingState.setConnector(connector.getSourceName());
                                     corpusBuildingState.setCurrentStatus(CorpusStatus.CREATED.toString());
                                     new Thread(() -> producer.sendMessage(CorpusBuildingState.class.toString(), corpusBuildingState)).start();
                                 }
