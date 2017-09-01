@@ -58,6 +58,7 @@ public class FetchMetadataTask implements Runnable {
     }
 
     public FetchMetadataTask(StoreRESTClient storeRESTClient,
+                             String authenticationToken,
                              ContentConnector connector,
                              Query query,
                              String tempDirectoryPath,
@@ -73,6 +74,7 @@ public class FetchMetadataTask implements Runnable {
         this.producer = producer;
         this.corpusBuildingState = new CorpusBuildingState();
         this.corpusBuildingState.setConnector(this.connector.getSourceName());
+        this.corpusBuildingState.setToken(authenticationToken);
     }
 
     @Override
@@ -111,7 +113,7 @@ public class FetchMetadataTask implements Runnable {
                         || corpusBuilderInfoModel == null) {
                     this.cancel();
                 } else {
-                    corpusBuildingState.setId(corpusId);
+                    corpusBuildingState.setId(corpusId + "@" + connector.getSourceName());
                     corpusBuildingState.setCurrentStatus(corpusBuilderInfoModel.getStatus());
                     SearchResult searchResult = connector.search(query);
                     if (searchResult != null) {

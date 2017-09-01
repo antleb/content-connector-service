@@ -38,7 +38,7 @@ public class JMSProducer {
             TextMessage textMessage = session.createTextMessage(message);
 
             // Tell the producer to send the message
-            log.info("Sending Message: " + textMessage);
+            log.debug("Sending Message: " + textMessage);
             producer.send(textMessage);
 
             // Clean up
@@ -57,7 +57,7 @@ public class JMSProducer {
             String messageJson = new ObjectMapper().writeValueAsString(jmsMessage);
             new Thread(() -> this.send(messageJson)).start();
         } catch (JsonProcessingException e) {
-            e.printStackTrace();
+            log.error("error parsing object to json", e);
         }
     }
 }

@@ -5,6 +5,7 @@ import javax.persistence.Entity;
 @Entity
 public class CorpusBuilderInfoModel {
     private String id;
+    private String token;
     private String query;
     private String status;
     private String archiveId;
@@ -15,6 +16,14 @@ public class CorpusBuilderInfoModel {
 
     public void setId(String id) {
         this.id = id;
+    }
+
+    public String getToken() {
+        return token;
+    }
+
+    public void setToken(String token) {
+        this.token = token;
     }
 
     public String getQuery() {

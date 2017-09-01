@@ -32,6 +32,7 @@ public class JMSConsumer implements ExceptionListener, MessageListener {
     public void listen() {
         try {
             // Create a Connection
+            connectionFactory.setConnectionIDPrefix("omtd-content-connector-service");
             connection = connectionFactory.createConnection();
             connection.setExceptionListener(this);
 
@@ -76,11 +77,7 @@ public class JMSConsumer implements ExceptionListener, MessageListener {
 
                 try {
                     JMSMessage messageReceived = new ObjectMapper().readValue(text, JMSMessage.class);
-
-                    if (messageReceived.getType().equals(CorpusBuildingState.class.toString())) {
-                        CorpusBuildingState corpusBuildingState = new ObjectMapper().readValue(messageReceived.getMessage(), CorpusBuildingState.class);
-                        log.info("State of corpus building: " + corpusBuildingState);
-                    } else if (messageReceived.getType().equals(EmailMessage.class.toString())) {
+                    if (messageReceived.getType().equals(EmailMessage.class.toString())) {
                         EmailMessage emailMessage = new ObjectMapper().readValue(messageReceived.getMessage(), EmailMessage.class);
                         if (emailMessage == null
                                 || emailMessage.getRecipient() == null
@@ -90,24 +87,6 @@ public class JMSConsumer implements ExceptionListener, MessageListener {
                 } catch (IOException e) {
                     log.error(e);
                 }
-
-
-//                if (text.contains("email")) {
-//                    // Recipient's email ID needs to be mentioned.
-//                    String to = "";
-//                    String subject = "";
-//
-//                    Matcher match = Pattern.compile("^email<(.*)>subject<(.*)>(.*$)").matcher(text);
-//                    if (match.find()) {
-//                        to = match.group(1);
-//                        subject = match.group(2);
-//                        text = match.group(3);
-//                    }
-//
-//                    if (to.isEmpty()) return;
-//
-//                    javaMailer.sendEmail(to, subject, text);
-//                }
             } catch (JMSException e) {
                 log.error("Error Receiving Message", e);
             }

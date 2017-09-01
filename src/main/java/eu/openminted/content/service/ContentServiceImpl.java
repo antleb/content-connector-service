@@ -26,6 +26,9 @@ public class ContentServiceImpl implements ContentService {
     @Autowired(required = false)
     private List<ContentConnector> contentConnectors;
 
+    @Autowired
+    ServiceStatus serviceStatus;
+
     private OMTDFacetInitializer OMTDFacetInitializer = new OMTDFacetInitializer();
 
     @Override
@@ -84,7 +87,6 @@ public class ContentServiceImpl implements ContentService {
 
     @Override
     public ServiceStatus status() {
-        ServiceStatus serviceStatus = new ServiceStatus();
         serviceStatus.setMaxFulltextDocuments(contentLimit);
         new Thread(() -> {
             producer.send("Content service status: " +

@@ -14,15 +14,18 @@ import eu.openminted.content.service.messages.JMSConsumer;
 import eu.openminted.content.service.messages.JMSProducer;
 import eu.openminted.content.service.model.CorpusBuilderInfoModel;
 import eu.openminted.corpus.CorpusBuilder;
+import eu.openminted.corpus.CorpusBuildingState;
 import eu.openminted.corpus.CorpusStatus;
 import eu.openminted.registry.core.domain.Facet;
 import eu.openminted.registry.core.domain.Value;
 import eu.openminted.registry.domain.*;
 import eu.openminted.store.restclient.StoreRESTClient;
 import org.apache.log4j.Logger;
+import org.mitre.openid.connect.model.OIDCAuthenticationToken;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
@@ -133,7 +136,6 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         SearchResult result = new SearchResult();
         result.setFacets(new ArrayList<>());
         sourceFacet.setField(OMTDFacetEnum.SOURCE.value());
-//        sourceFacet.setLabel("Content Source");
         sourceFacet.setLabel(OMTDFacetInitializer.getOmtdFacetLabels().get(OMTDFacetEnum.SOURCE));
         sourceFacet.setValues(new ArrayList<>());
 
@@ -221,8 +223,19 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                     corpusTextPartInfo.setLingualityInfo(lingualityInfo);
                 }
 
+                Description description = new Description();
+                description.setLang("en");
+                String currentDescription = descriptionString;
+                int publicationsCounter = 0;
+                int languagesCounter = 0;
+                currentDescription = currentDescription.replaceAll("\\[creation_date\\]", new java.util.Date().toString());
+                currentDescription = currentDescription.replaceAll("\\[source\\]", sourcesBuilder.toString());
+
                 for (Value value : facet.getValues()) {
                     if (value.getCount() > 0) {
+                        languagesCounter++;
+                        publicationsCounter += value.getCount();
+
                         Language language = new Language();
                         LanguageInfo languageInfo = new LanguageInfo();
 
@@ -241,21 +254,15 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                         languageInfo.setSizePerLanguage(languageSizeInfo);
 
                         corpusTextPartInfo.getLanguages().add(languageInfo);
-
-                        Description description = new Description();
-                        description.setLang("en");
-                        String currentDescription = descriptionString;
-
-                        currentDescription = currentDescription.replaceAll("\\[creation_date\\]", new java.util.Date().toString());
-                        currentDescription = currentDescription.replaceAll("\\[source\\]", sourcesBuilder.toString());
-                        currentDescription = currentDescription.replaceAll("\\[number_of\\]", "" + value.getCount());
-                        currentDescription = currentDescription.replaceAll("\\[language\\]", "" + language.getLanguageTag());
-
-                        description.setValue(currentDescription);
-
-                        corpusInfo.getIdentificationInfo().getDescriptions().add(description);
                     }
                 }
+
+                currentDescription = currentDescription.replaceAll("\\[number_of\\]", "" + publicationsCounter);
+                currentDescription = currentDescription.replaceAll("\\[language\\]", languagesCounter + " languages");
+
+                description.setValue(currentDescription);
+                corpusInfo.getIdentificationInfo().getDescriptions().add(description);
+
                 SizeInfo sizeInfo = new SizeInfo();
                 sizeInfo.setSize(String.valueOf(result.getTotalHits()));
                 sizeInfo.setSizeUnit(SizeUnitEnum.TEXTS);
@@ -300,9 +307,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             DistributionLoc distributionLoc = new DistributionLoc();
             distributionLoc.setDistributionMedium(DistributionMediumEnum.DOWNLOADABLE);
 
-//            List<String> dowloadaURLs = new ArrayList<>();
-//            dowloadaURLs.add(registryHost + "/omtd-registry/request/corpus/download?archiveId=" + archiveID);
-            distributionLoc.setDistributionLocation(registryHost + "/omtd-registry/request/corpus/download?archiveId=" + archiveID);
+            distributionLoc.setDistributionLocation(registryHost + "/request/corpus/download?archiveId=" + archiveID);
             datasetDistributionInfo.getDistributionLoc().add(distributionLoc);
 
             distributionInfos.add(datasetDistributionInfo);
@@ -310,15 +315,20 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             storeRESTClient.createSubArchive(archiveID, "metadata");
             storeRESTClient.createSubArchive(archiveID, "fulltext");
             storeRESTClient.createSubArchive(archiveID, "abstract");
-            corpusBuilderInfoDao.insert(metadataIdentifier.getValue(), queryString, CorpusStatus.SUBMITTED, archiveID);
 
+            try {
+                OIDCAuthenticationToken authentication = (OIDCAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+                corpusBuilderInfoDao.insert(metadataIdentifier.getValue(), authentication.getSub(), queryString, CorpusStatus.SUBMITTED, archiveID);
+            } catch (ClassCastException e) {
+                log.error("User is not authenticated to build corpus", e);
+            }
             final String prepareMessage = "Prepare corpus Query: " + queryString;
-            new Thread(() -> producer.send(prepareMessage)).start();
-            new Thread(() -> producer.send("Prepare corpus CorpusID: " + metadataIdentifier.getValue())).start();
-            new Thread(() -> producer.send("Prepare corpus ArchiveID: " + archiveID)).start();
-            new Thread(() -> producer.send("Prepare corpus SubarchiveID: " + archiveID + "/metadata")).start();
-            new Thread(() -> producer.send("Prepare corpus SubarchiveID: " + archiveID + "/fulltext")).start();
-            new Thread(() -> producer.send("Prepare corpus SubarchiveID: " + archiveID + "/abstract")).start();
+            new Thread(() -> producer.sendMessage("String", prepareMessage)).start();
+            new Thread(() -> producer.sendMessage("String", "Prepare corpus CorpusID: " + metadataIdentifier.getValue())).start();
+            new Thread(() -> producer.sendMessage("String", "Prepare corpus ArchiveID: " + archiveID)).start();
+            new Thread(() -> producer.sendMessage("String", "Prepare corpus SubarchiveID: " + archiveID + "/metadata")).start();
+            new Thread(() -> producer.sendMessage("String", "Prepare corpus SubarchiveID: " + archiveID + "/fulltext")).start();
+            new Thread(() -> producer.sendMessage("String", "Prepare corpus SubarchiveID: " + archiveID + "/abstract")).start();
         }
 
         return corpusMetadata;
@@ -334,18 +344,27 @@ public class CorpusBuilderImpl implements CorpusBuilder {
      */
     @Override
     public void buildCorpus(Corpus corpusMetadata) {
-
+        String authenticationSub = "";
         try {
-            String corpusRequest = new ObjectMapper().writeValueAsString(corpusMetadata);
-            new Thread(() -> producer.send(corpusRequest)).start();
+            OIDCAuthenticationToken authentication = (OIDCAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+            authenticationSub = authentication.getSub();
 
-        } catch (JsonProcessingException e) {
-            log.error("CorpusBuilderImpl.buildCorpus: Unable to parse Corpus as Json string", e);
-        }
+            if (contentConnectors != null) {
+                corpora.add(corpusMetadata);
 
-        if (contentConnectors != null) {
-            corpora.add(corpusMetadata);
-            new Thread(() -> producer.send("Corpus Build: Sending corpus with id " + corpusMetadata.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue() + " to corpora queue for execution")).start();
+                for (ContentConnector connector : contentConnectors) {
+                    if (authenticationSub != null || !authenticationSub.isEmpty()) {
+                        CorpusBuildingState corpusBuildingState = new CorpusBuildingState();
+                        corpusBuildingState.setId(corpusMetadata.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue() + "@" + connector.getSourceName());
+                        corpusBuildingState.setToken(authenticationSub);
+                        corpusBuildingState.setCurrentStatus(CorpusStatus.SUBMITTED.toString());
+                        corpusBuildingState.setTotalHits(corpusMetadata.getCorpusInfo().getCorpusSubtypeSpecificInfo().getRawCorpusInfo().getCorpusMediaPartsType().getCorpusTextParts().size());
+                        new Thread(() -> producer.sendMessage(CorpusBuildingState.class.toString(), corpusBuildingState)).start();
+                    }
+                }
+            }
+        } catch (ClassCastException e) {
+            log.error("User is not authenticated to build corpus", e);
         }
     }
 
@@ -362,7 +381,6 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
         try {
             corpusBuilderInfoModel = corpusBuilderInfoDao.find(s);
-            new Thread(() -> producer.send("Corpus " + s + " status: " + corpusBuilderInfoModel.getStatus())).start();
             return CorpusStatus.valueOf(corpusBuilderInfoModel.getStatus());
         } catch (EmptyResultDataAccessException e) {
 
@@ -387,7 +405,6 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
             if (model.getStatus().equalsIgnoreCase(CorpusStatus.SUBMITTED.toString())
                     || model.getStatus().equalsIgnoreCase(CorpusStatus.PROCESSING.toString())) {
-                new Thread(() -> producer.send("Corpus " + s + " canceled")).start();
                 corpusBuilderInfoDao.update(s, "status", CorpusStatus.CANCELED);
                 storeRESTClient.deleteArchive(model.getArchiveId());
             }
@@ -408,7 +425,6 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             CorpusBuilderInfoModel model = corpusBuilderInfoDao.find(s);
             corpusBuilderInfoDao.update(s, "status", CorpusStatus.DELETED);
             storeRESTClient.deleteArchive(model.getArchiveId());
-            new Thread(() -> producer.send("Corpus " + s + " deleted")).start();
             log.info(corpusBuilderInfoDao.find(s));
         } catch (Exception e) {
 

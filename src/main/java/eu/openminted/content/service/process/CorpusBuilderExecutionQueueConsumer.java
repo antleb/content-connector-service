@@ -10,11 +10,14 @@ import eu.openminted.content.service.mail.EmailMessage;
 import eu.openminted.content.service.messages.JMSMessage;
 import eu.openminted.content.service.messages.JMSProducer;
 import eu.openminted.content.service.model.CorpusBuilderInfoModel;
+import eu.openminted.corpus.CorpusBuildingState;
 import eu.openminted.corpus.CorpusStatus;
 import eu.openminted.registry.domain.Corpus;
 import eu.openminted.store.restclient.StoreRESTClient;
 import org.apache.log4j.Logger;
+import org.mitre.openid.connect.model.OIDCAuthenticationToken;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
@@ -103,6 +106,7 @@ public class CorpusBuilderExecutionQueueConsumer {
                                         continue;
 
                                     FetchMetadataTask task = new FetchMetadataTask(storeRESTClient,
+                                            corpusBuilderInfoModel.getToken(),
                                             connector,
                                             query,
                                             tempDirectoryPath,
@@ -144,19 +148,6 @@ public class CorpusBuilderExecutionQueueConsumer {
                                 corpusBuilderInfoModel.setStatus(CorpusStatus.CREATED.toString());
                                 corpusBuilderInfoDao.update(corpusBuilderInfoModel.getId(), "status", CorpusStatus.CREATED);
                                 text = "Corpus building with ID " + corpusId + " has been created at archive with ID " + corpusBuilderInfoModel.getArchiveId();
-
-                                try {
-//                                    String url = registryHost + "/omtd-registry/request/corpus";
-//                                    RestTemplate restTemplate = new RestTemplate();
-//                                    restTemplate.postForObject(url, corpus, Corpus.class);
-//                                    new Thread(() -> producer.send("Corpus Build: Sending corpus with ID " + corpus.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue() + " to registry")).start();
-
-                                    producer.sendMessage("Corpus", corpus);
-                                } catch (Exception e) {
-                                    log.error("CorpusBuilderImpl.buildCorpus: Error posting corpus at registry. Error stacktrace is omitted on purpose");
-                                    String errorMessage = "Corpus Build: Error sending corpus with  ID " + corpus.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue() + " to registry";
-                                    producer.sendMessage("Corpus", errorMessage);
-                                }
                             } else {
                                 text = "Corpus building with corpusId " + corpusId + " has been interrupted!";
                             }
@@ -167,6 +158,16 @@ public class CorpusBuilderExecutionQueueConsumer {
                                 emailMessage.setText(text);
 
                                 producer.sendMessage(EmailMessage.class.toString(), emailMessage);
+                            }
+
+                            for (ContentConnector connector : contentConnectors) {
+                                if (corpusBuilderInfoModel.getToken() != null || !corpusBuilderInfoModel.getToken().isEmpty()) {
+                                    CorpusBuildingState corpusBuildingState = new CorpusBuildingState();
+                                    corpusBuildingState.setId(corpusId + "@" + connector.getSourceName());
+                                    corpusBuildingState.setToken(corpusBuilderInfoModel.getToken());
+                                    corpusBuildingState.setCurrentStatus(CorpusStatus.CREATED.toString());
+                                    new Thread(() -> producer.sendMessage(CorpusBuildingState.class.toString(), corpusBuildingState)).start();
+                                }
                             }
                         }
                     });

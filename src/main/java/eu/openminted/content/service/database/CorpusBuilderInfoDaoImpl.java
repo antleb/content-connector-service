@@ -38,14 +38,15 @@ public class CorpusBuilderInfoDaoImpl implements CorpusBuilderInfoDao {
     }
 
     @Override
-    public void insert(String id, String query, CorpusStatus status, String archiveId) {
+    public void insert(String id, String token, String query, CorpusStatus status, String archiveId) {
         Map<String, Object> params = new HashMap<>();
         params.put("id", id);
+        params.put("token", token);
         params.put("query", query);
         params.put("status", status.toString());
         params.put("archiveId", archiveId);
 
-        this.jdbcTemplate.update("insert into corpusbuilderinfo values (:id, :query, :status, :archiveId);", params);
+        this.jdbcTemplate.update("insert into corpusbuilderinfo values (:id, :token, :query, :status, :archiveId);", params);
     }
 
     @Override
