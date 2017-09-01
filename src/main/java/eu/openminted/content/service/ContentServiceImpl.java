@@ -88,10 +88,6 @@ public class ContentServiceImpl implements ContentService {
     @Override
     public ServiceStatus status() {
         serviceStatus.setMaxFulltextDocuments(contentLimit);
-        new Thread(() -> {
-            producer.send("Content service status: " +
-                    "maxFulltextDocuments: " + serviceStatus.getMaxFulltextDocuments());
-        }).start();
         return serviceStatus;
     }
 
