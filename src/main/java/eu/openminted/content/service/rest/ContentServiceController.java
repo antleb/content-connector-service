@@ -115,7 +115,8 @@ public class ContentServiceController {
     @RequestMapping(value = "/corpus/build", method = RequestMethod.POST, headers = "Accept=application/json")
     public void build(@RequestBody Corpus corpus) {
 
-        if (corpus == null) throw new ResourceNotFoundException();
+        if (corpus == null
+                || corpus.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue().isEmpty()) throw new ResourceNotFoundException();
 
         if (SecurityContextHolder.getContext() == null || !(SecurityContextHolder.getContext().getAuthentication() instanceof OIDCAuthenticationToken))
             throw new ServiceAuthenticationException();
