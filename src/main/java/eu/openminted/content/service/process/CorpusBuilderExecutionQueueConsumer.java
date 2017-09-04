@@ -146,11 +146,12 @@ public class CorpusBuilderExecutionQueueConsumer {
 
                                 storeRESTClient.finalizeArchive(corpusBuilderInfoModel.getArchiveId());
 
-                                corpusBuilderInfoModel.setStatus(CorpusStatus.CREATED.toString());
+//                                corpusBuilderInfoModel.setStatus(CorpusStatus.CREATED.toString());
                                 corpusBuilderInfoDao.update(corpusBuilderInfoModel.getId(), "status", CorpusStatus.CREATED);
                                 text = "Corpus building with ID " + corpusId + " has been created at archive with ID " + corpusBuilderInfoModel.getArchiveId();
                             } else {
                                 text = "Corpus building with corpusId " + corpusId + " has been interrupted!";
+                                corpusBuilderInfoDao.updateStatus(corpusBuilderInfoModel.getId(), CorpusStatus.CANCELED);
                             }
                             if (!corpus.getCorpusInfo().getContactInfo().getContactEmail().isEmpty()) {
                                 EmailMessage emailMessage = new EmailMessage();
@@ -161,16 +162,16 @@ public class CorpusBuilderExecutionQueueConsumer {
                                 producer.sendMessage(EmailMessage.class.toString(), emailMessage);
                             }
 
-                            for (ContentConnector connector : contentConnectors) {
-                                if (corpusBuilderInfoModel.getToken() != null || !corpusBuilderInfoModel.getToken().isEmpty()) {
-                                    CorpusBuildingState corpusBuildingState = new CorpusBuildingState();
-                                    corpusBuildingState.setId(corpusId + "@" + connector.getSourceName());
-                                    corpusBuildingState.setToken(corpusBuilderInfoModel.getToken());
-                                    corpusBuildingState.setConnector(connector.getSourceName());
-                                    corpusBuildingState.setCurrentStatus(corpusBuilderInfoModel.getStatus());
-                                    new Thread(() -> producer.sendMessage(CorpusBuildingState.class.toString(), corpusBuildingState)).start();
-                                }
-                            }
+//                            for (ContentConnector connector : contentConnectors) {
+//                                if (corpusBuilderInfoModel.getToken() != null || !corpusBuilderInfoModel.getToken().isEmpty()) {
+//                                    CorpusBuildingState corpusBuildingState = new CorpusBuildingState();
+//                                    corpusBuildingState.setId(corpusId + "@" + connector.getSourceName());
+//                                    corpusBuildingState.setToken(corpusBuilderInfoModel.getToken());
+//                                    corpusBuildingState.setConnector(connector.getSourceName());
+//                                    corpusBuildingState.setCurrentStatus(corpusBuilderInfoModel.getStatus());
+//                                    new Thread(() -> producer.sendMessage(CorpusBuildingState.class.toString(), corpusBuildingState)).start();
+//                                }
+//                            }
                         }
                     });
                 }

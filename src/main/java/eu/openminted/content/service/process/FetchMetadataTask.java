@@ -268,6 +268,7 @@ public class FetchMetadataTask implements Runnable {
                     }
                 }
 
+                corpusBuildingState.setCurrentStatus(CorpusStatus.CREATED.toString());
                 producer.sendMessage(CorpusBuildingState.class.toString(), corpusBuildingState);
             } catch (FileNotFoundException e) {
                 log.error("FetchMetadataTask.run- Downloading fulltext -FileNotFoundException ", e);
