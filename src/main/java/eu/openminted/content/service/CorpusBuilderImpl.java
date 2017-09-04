@@ -203,26 +203,6 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
                 corpusInfo.getCorpusSubtypeSpecificInfo().getRawCorpusInfo().getCorpusMediaPartsType().getCorpusTextParts().add(corpusTextPartInfo);
 
-                LingualityInfo lingualityInfo = new LingualityInfo();
-
-                switch (facet.getValues().size()) {
-                    case 1:
-                        lingualityInfo.setLingualityType(LingualityTypeEnum.MONOLINGUAL);
-                        break;
-                    case 2:
-                        lingualityInfo.setLingualityType(LingualityTypeEnum.BILINGUAL);
-                        break;
-                    case 0:
-                        break;
-                    default:
-                        lingualityInfo.setLingualityType(LingualityTypeEnum.MULTILINGUAL);
-                        break;
-                }
-
-                if (facet.getValues().size() > 0) {
-                    corpusTextPartInfo.setLingualityInfo(lingualityInfo);
-                }
-
                 Description description = new Description();
                 description.setLang("en");
                 String currentDescription = descriptionString;
@@ -262,6 +242,20 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
                 description.setValue(currentDescription);
                 corpusInfo.getIdentificationInfo().getDescriptions().add(description);
+
+                LingualityInfo lingualityInfo = new LingualityInfo();
+
+                if (languagesCounter == 1) {
+                    lingualityInfo.setLingualityType(LingualityTypeEnum.MONOLINGUAL);
+                } else if (languagesCounter == 2) {
+                    lingualityInfo.setLingualityType(LingualityTypeEnum.BILINGUAL);
+                } else if (languagesCounter > 2) {
+                    lingualityInfo.setLingualityType(LingualityTypeEnum.MULTILINGUAL);
+                } else {
+                    lingualityInfo.setLingualityType(LingualityTypeEnum.MONOLINGUAL);
+                }
+
+                corpusTextPartInfo.setLingualityInfo(lingualityInfo);
 
                 SizeInfo sizeInfo = new SizeInfo();
                 sizeInfo.setSize(String.valueOf(result.getTotalHits()));
