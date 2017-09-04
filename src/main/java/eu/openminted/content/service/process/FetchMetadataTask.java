@@ -127,10 +127,11 @@ public class FetchMetadataTask implements Runnable {
             CorpusBuilderInfoModel corpusBuilderInfoModel = corpusBuilderInfoDao.find(corpusId);
             corpusBuildingState.setId(corpusId + "@" + connector.getSourceName());
             corpusBuildingState.setCurrentStatus(corpusBuilderInfoModel.getStatus());
+
             SearchResult searchResult = connector.search(query);
+
             if (searchResult != null) {
                 corpusBuildingState.setTotalHits(searchResult.getTotalHits());
-                corpusBuildingState.setMetadataProgress(0);
             }
 
             currentDoc = dbf.newDocumentBuilder().newDocument();
@@ -154,6 +155,11 @@ public class FetchMetadataTask implements Runnable {
         int totalRejected = 0;
         int metadataProgress = 0;
         int fulltextProgress = 0;
+
+        this.corpusBuildingState.setTotalFulltext(totalFulltext);
+        this.corpusBuildingState.setTotalRejected(totalRejected);
+        this.corpusBuildingState.setMetadataProgress(metadataProgress);
+        this.corpusBuildingState.setFulltextProgress(fulltextProgress);
 
         if (nodes != null) {
             corpusBuildingState.setCurrentStatus(CorpusStatus.PROCESSING_METADATA.toString());
@@ -197,11 +203,11 @@ public class FetchMetadataTask implements Runnable {
                             hasFulltext = false;
                         }
 
-                        if (!hasFulltext) {
-                            log.debug("MetadataDocument Identifier does not contain fulltext. Skipping current document.");
-                            totalRejected++;
-                            continue;
-                        }
+//                        if (!hasFulltext) {
+//                            log.debug("MetadataDocument Identifier does not contain fulltext. Skipping current document.");
+//                            totalRejected++;
+//                            continue;
+//                        }
                     }
 
                     writeToFile(imported, metadataFile);
