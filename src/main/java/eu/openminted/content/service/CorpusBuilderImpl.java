@@ -312,7 +312,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
             try {
                 OIDCAuthenticationToken authentication = (OIDCAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
-                corpusBuilderInfoDao.insert(metadataIdentifier.getValue(), authentication.getSub(), queryString, CorpusStatus.SUBMITTED, archiveID);
+                corpusBuilderInfoDao.insert(metadataIdentifier.getValue(), authentication.getSub(), queryString, CorpusStatus.INITIATING, archiveID);
             } catch (ClassCastException e) {
                 log.error("User is not authenticated to build corpus", e);
             }
@@ -343,12 +343,13 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             OIDCAuthenticationToken authentication = (OIDCAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
             authenticationSub = authentication.getSub();
             if (authenticationSub != null || !authenticationSub.isEmpty()) {
+                String corpusId = corpusMetadata.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue();
                 if (contentConnectors != null) {
                     corpora.add(corpusMetadata);
-
+                    corpusBuilderInfoDao.updateStatus(corpusId, CorpusStatus.SUBMITTED);
                     for (ContentConnector connector : contentConnectors) {
                         CorpusBuildingState corpusBuildingState = new CorpusBuildingState();
-                        corpusBuildingState.setId(corpusMetadata.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue() + "@" + connector.getSourceName());
+                        corpusBuildingState.setId(corpusId + "@" + connector.getSourceName());
                         corpusBuildingState.setToken(authenticationSub);
                         corpusBuildingState.setCurrentStatus(CorpusStatus.SUBMITTED.toString());
                         corpusBuildingState.setConnector(connector.getSourceName());
