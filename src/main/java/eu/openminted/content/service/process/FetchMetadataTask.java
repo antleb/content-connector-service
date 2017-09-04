@@ -139,7 +139,6 @@ public class FetchMetadataTask implements Runnable {
             log.info("Fetching metadata has been interrupted");
             log.debug("FetchMetadataTask.run-IOException ", e);
             corpusBuildingState.setCurrentStatus(CorpusStatus.FAILED.toString());
-            return;
         } catch (SAXException e) {
             log.info("Fetching metadata has been interrupted");
             log.debug("FetchMetadataTask.run-SAXException ", e);
@@ -234,7 +233,6 @@ public class FetchMetadataTask implements Runnable {
                 } catch (IOException e) {
                     log.error("FetchMetadataTask.run-Fetching Metadata -IOException ", e);
                     corpusBuildingState.setCurrentStatus(CorpusStatus.FAILED.toString());
-                    return;
                 }
             }
 
@@ -277,7 +275,6 @@ public class FetchMetadataTask implements Runnable {
             } catch (IOException e) {
                 log.error("FetchMetadataTask.run- Downloading fulltext -IOException ", e);
                 corpusBuildingState.setCurrentStatus(CorpusStatus.FAILED.toString());
-                return;
             }
         }
 
