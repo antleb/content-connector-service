@@ -112,14 +112,6 @@ public class FetchMetadataTask implements Runnable {
                         && corpusBuilderInfoModel.getStatus().equalsIgnoreCase(CorpusStatus.CREATED.toString()))
                         || corpusBuilderInfoModel == null) {
                     this.cancel();
-                } else {
-                    corpusBuildingState.setId(corpusId + "@" + connector.getSourceName());
-                    corpusBuildingState.setCurrentStatus(corpusBuilderInfoModel.getStatus());
-                    SearchResult searchResult = connector.search(query);
-                    if (searchResult != null) {
-                        corpusBuildingState.setTotalHits(searchResult.getTotalHits());
-                        corpusBuildingState.setMetadataProgress(0);
-                    }
                 }
             }
         };
@@ -128,6 +120,15 @@ public class FetchMetadataTask implements Runnable {
         timer.schedule(timerTask, 0, period);
 
         try {
+            CorpusBuilderInfoModel corpusBuilderInfoModel = corpusBuilderInfoDao.find(corpusId);
+            corpusBuildingState.setId(corpusId + "@" + connector.getSourceName());
+            corpusBuildingState.setCurrentStatus(corpusBuilderInfoModel.getStatus());
+            SearchResult searchResult = connector.search(query);
+            if (searchResult != null) {
+                corpusBuildingState.setTotalHits(searchResult.getTotalHits());
+                corpusBuildingState.setMetadataProgress(0);
+            }
+
             currentDoc = dbf.newDocumentBuilder().newDocument();
             inputStream = connector.fetchMetadata(query);
 
