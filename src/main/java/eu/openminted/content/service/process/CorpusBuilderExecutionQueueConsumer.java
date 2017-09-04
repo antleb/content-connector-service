@@ -83,7 +83,7 @@ public class CorpusBuilderExecutionQueueConsumer {
                                 corpusBuilderInfoModel = corpusBuilderInfoDao.find(corpusId);
                                 if (corpusBuilderInfoModel.getStatus().equalsIgnoreCase(CorpusStatus.CANCELED.toString())
                                         || corpusBuilderInfoModel.getStatus().equalsIgnoreCase(CorpusStatus.DELETED.toString())
-                                        || corpusBuilderInfoModel.getStatus().equalsIgnoreCase(CorpusStatus.FAILED.toString())
+//                                        || corpusBuilderInfoModel.getStatus().equalsIgnoreCase(CorpusStatus.FAILED.toString())
                                         || corpusBuilderInfoModel.getStatus().equalsIgnoreCase(CorpusStatus.PROCESSING.toString()))
                                     return;
 
@@ -141,7 +141,7 @@ public class CorpusBuilderExecutionQueueConsumer {
                             String text;
                             if (corpusBuilderInfoModel != null
                                     && !(corpusBuilderInfoModel.getStatus().equalsIgnoreCase(CorpusStatus.CANCELED.toString())
-                                    || corpusBuilderInfoModel.getStatus().equalsIgnoreCase(CorpusStatus.FAILED.toString())
+//                                    || corpusBuilderInfoModel.getStatus().equalsIgnoreCase(CorpusStatus.FAILED.toString())
                                     || corpusBuilderInfoModel.getStatus().equalsIgnoreCase(CorpusStatus.DELETED.toString()))) {
 
                                 storeRESTClient.finalizeArchive(corpusBuilderInfoModel.getArchiveId());
