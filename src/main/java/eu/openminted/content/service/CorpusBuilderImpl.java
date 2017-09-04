@@ -348,12 +348,11 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         try {
             OIDCAuthenticationToken authentication = (OIDCAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
             authenticationSub = authentication.getSub();
+            if (authenticationSub != null || !authenticationSub.isEmpty()) {
+                if (contentConnectors != null) {
+                    corpora.add(corpusMetadata);
 
-            if (contentConnectors != null) {
-                corpora.add(corpusMetadata);
-
-                for (ContentConnector connector : contentConnectors) {
-                    if (authenticationSub != null || !authenticationSub.isEmpty()) {
+                    for (ContentConnector connector : contentConnectors) {
                         CorpusBuildingState corpusBuildingState = new CorpusBuildingState();
                         corpusBuildingState.setId(corpusMetadata.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue() + "@" + connector.getSourceName());
                         corpusBuildingState.setToken(authenticationSub);
@@ -363,7 +362,10 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                         new Thread(() -> producer.sendMessage(CorpusBuildingState.class.toString(), corpusBuildingState)).start();
                     }
                 }
+            } else {
+                log.error("User is not authenticated to build corpus");
             }
+
         } catch (ClassCastException e) {
             log.error("User is not authenticated to build corpus", e);
         }

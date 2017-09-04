@@ -83,6 +83,7 @@ public class CorpusBuilderExecutionQueueConsumer {
                                 corpusBuilderInfoModel = corpusBuilderInfoDao.find(corpusId);
                                 if (corpusBuilderInfoModel.getStatus().equalsIgnoreCase(CorpusStatus.CANCELED.toString())
                                         || corpusBuilderInfoModel.getStatus().equalsIgnoreCase(CorpusStatus.DELETED.toString())
+                                        || corpusBuilderInfoModel.getStatus().equalsIgnoreCase(CorpusStatus.FAILED.toString())
                                         || corpusBuilderInfoModel.getStatus().equalsIgnoreCase(CorpusStatus.PROCESSING.toString()))
                                     return;
 
@@ -123,10 +124,9 @@ public class CorpusBuilderExecutionQueueConsumer {
                                     try {
                                         future.get();
                                     } catch (InterruptedException e) {
-
                                         log.info("Thread Interrupted or error in execution");
-                                        corpusBuilderInfoModel.setStatus(CorpusStatus.CANCELED.toString());
-                                        corpusBuilderInfoDao.update(corpusBuilderInfoModel.getId(), "status", CorpusStatus.CANCELED);
+//                                        corpusBuilderInfoModel.setStatus(CorpusStatus.FAILED.toString());
+//                                        corpusBuilderInfoDao.update(corpusBuilderInfoModel.getId(), "status", CorpusStatus.FAILED);
 
                                     } catch (Exception e) {
                                         log.error("CorpusBuilderImpl.buildCorpus - Inner exception at the future.get method", e);
@@ -140,7 +140,8 @@ public class CorpusBuilderExecutionQueueConsumer {
                             corpusBuilderInfoModel = corpusBuilderInfoDao.find(corpusId);
                             String text;
                             if (corpusBuilderInfoModel != null
-                                    && (!corpusBuilderInfoModel.getStatus().equalsIgnoreCase(CorpusStatus.CANCELED.toString())
+                                    && !(corpusBuilderInfoModel.getStatus().equalsIgnoreCase(CorpusStatus.CANCELED.toString())
+                                    || corpusBuilderInfoModel.getStatus().equalsIgnoreCase(CorpusStatus.FAILED.toString())
                                     || corpusBuilderInfoModel.getStatus().equalsIgnoreCase(CorpusStatus.DELETED.toString()))) {
 
                                 storeRESTClient.finalizeArchive(corpusBuilderInfoModel.getArchiveId());
@@ -166,7 +167,7 @@ public class CorpusBuilderExecutionQueueConsumer {
                                     corpusBuildingState.setId(corpusId + "@" + connector.getSourceName());
                                     corpusBuildingState.setToken(corpusBuilderInfoModel.getToken());
                                     corpusBuildingState.setConnector(connector.getSourceName());
-                                    corpusBuildingState.setCurrentStatus(CorpusStatus.CREATED.toString());
+                                    corpusBuildingState.setCurrentStatus(corpusBuilderInfoModel.getStatus());
                                     new Thread(() -> producer.sendMessage(CorpusBuildingState.class.toString(), corpusBuildingState)).start();
                                 }
                             }

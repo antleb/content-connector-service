@@ -138,6 +138,8 @@ public class FetchMetadataTask implements Runnable {
         } catch (IOException e) {
             log.info("Fetching metadata has been interrupted");
             log.debug("FetchMetadataTask.run-IOException ", e);
+            corpusBuildingState.setCurrentStatus(CorpusStatus.FAILED.toString());
+            return;
         } catch (SAXException e) {
             log.info("Fetching metadata has been interrupted");
             log.debug("FetchMetadataTask.run-SAXException ", e);
@@ -149,7 +151,6 @@ public class FetchMetadataTask implements Runnable {
         int totalRejected = 0;
         int metadataProgress = 0;
         int fulltextProgress = 0;
-
 
         if (nodes != null) {
             corpusBuildingState.setCurrentStatus(CorpusStatus.PROCESSING_METADATA.toString());
@@ -232,6 +233,8 @@ public class FetchMetadataTask implements Runnable {
                     log.error("FetchMetadataTask.run-Fetching Metadata -XPathExpressionException ", e);
                 } catch (IOException e) {
                     log.error("FetchMetadataTask.run-Fetching Metadata -IOException ", e);
+                    corpusBuildingState.setCurrentStatus(CorpusStatus.FAILED.toString());
+                    return;
                 }
             }
 
@@ -257,7 +260,7 @@ public class FetchMetadataTask implements Runnable {
                                     storeRESTClient.storeFile(downloadFile, archiveId + "/fulltext", identifier + ".pdf");
                                     fulltextProgress++;
                                     corpusBuildingState.setFulltextProgress(fulltextProgress);
-                                    if (totalFulltext > 0 && totalFulltext % 10 == 0) {
+                                    if (totalFulltext > 0 && fulltextProgress % 10 == 0) {
                                         producer.sendMessage(CorpusBuildingState.class.toString(), corpusBuildingState);
                                     }
                                 }
@@ -273,6 +276,8 @@ public class FetchMetadataTask implements Runnable {
                 log.error("FetchMetadataTask.run- Downloading fulltext -FileNotFoundException ", e);
             } catch (IOException e) {
                 log.error("FetchMetadataTask.run- Downloading fulltext -IOException ", e);
+                corpusBuildingState.setCurrentStatus(CorpusStatus.FAILED.toString());
+                return;
             }
         }
 
