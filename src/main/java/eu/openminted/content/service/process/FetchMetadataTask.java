@@ -73,6 +73,10 @@ public class FetchMetadataTask implements Runnable {
         this.contentLimit = contentLimit;
         this.producer = producer;
         this.corpusBuildingState = new CorpusBuildingState();
+        this.corpusBuildingState.setTotalHits(0);
+        this.corpusBuildingState.setTotalFulltext(0);
+        this.corpusBuildingState.setMetadataProgress(0);
+        this.corpusBuildingState.setFulltextProgress(0);
         this.corpusBuildingState.setConnector(this.connector.getSourceName());
         this.corpusBuildingState.setToken(authenticationToken);
     }
