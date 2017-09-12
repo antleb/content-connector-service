@@ -17,9 +17,6 @@ public class ServiceStatus {
     }
 
     public int getMaxFulltextDocuments() {
-        if (contentConnectors != null) {
-            return contentConnectors.size() * maxFulltextDocuments;
-        }
         return maxFulltextDocuments;
     }
 

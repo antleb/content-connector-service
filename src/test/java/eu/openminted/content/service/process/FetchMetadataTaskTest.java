@@ -5,7 +5,8 @@ import eu.openminted.content.connector.Query;
 import eu.openminted.content.connector.SearchResult;
 import eu.openminted.content.service.OmtdNamespace;
 import eu.openminted.content.service.ServiceConfiguration;
-import eu.openminted.registry.domain.DocumentMetadataRecord;
+import eu.openminted.content.service.rest.ContentServiceController;
+import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -16,10 +17,8 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
-import javax.swing.text.AbstractDocument;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerConfigurationException;
 import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
@@ -28,16 +27,11 @@ import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpression;
 import javax.xml.xpath.XPathFactory;
-
-import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-
-import static org.junit.Assert.*;
 
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration(classes = {ServiceConfiguration.class})
@@ -46,10 +40,66 @@ public class FetchMetadataTaskTest {
     @Autowired
     List<ContentConnector> contentConnectors;
 
-    private void showXML(Node node) throws TransformerException, IOException {
-        Transformer transformer = TransformerFactory.newInstance().newTransformer();
-        transformer.transform(new DOMSource(node), new StreamResult(System.out));
+    @Autowired
+    ContentServiceController controller;
+
+//    @Autowired
+//    CorpusBuilder corpusBuilder;
+
+    Query query;
+
+    @Before
+    public void init() {
+        query = new Query();
+        query.setFrom(0);
+        query.setTo(1);
+        query.setParams(new HashMap<>());
+        query.getParams().put("licence", new ArrayList<>());
+        query.getParams().get("licence").add("Embargo");
+        query.getParams().put("publicationyear", new ArrayList<>());
+        query.getParams().get("publicationyear").add("2009");
+
+        query.setKeyword("alekos");
     }
+
+    @Test
+    @Ignore
+    public void testBrowse() {
+
+        query.getParams().put("source", new ArrayList<>());
+        query.getParams().get("source").add("OpenAIRE");
+
+        SearchResult searchResult = controller.browse(query);
+        if (searchResult != null) {
+
+            System.out.println("Results from OpenAIRE: " + searchResult.getTotalHits());
+        }
+
+        query.getParams().put("source", new ArrayList<>());
+        query.getParams().get("source").add("CORE");
+
+        searchResult = controller.browse(query);
+        if (searchResult != null) {
+            System.out.println("Results from CORE: " + searchResult.getTotalHits());
+        }
+    }
+
+    @Test
+    @Ignore
+    public void testBrowseOnlyCORE() {
+//        query.getParams().put("source", new ArrayList<>());
+//        query.getParams().get("source").add("CORE");
+
+        try {
+            SearchResult searchResult = controller.browse(query);
+            if (searchResult != null) {
+                System.out.println("Results from CORE: " + searchResult.getTotalHits());
+            }
+        } catch (Exception e) {
+
+        }
+    }
+
 
     @Test
     @Ignore
@@ -71,7 +121,6 @@ public class FetchMetadataTaskTest {
 
         Document currentDoc = null;
         NodeList nodes = null;
-
 
 
         if (contentConnectors != null) {
@@ -107,39 +156,39 @@ public class FetchMetadataTaskTest {
 //                            } else {
 //                                System.out.println(identifier);
 
-                                XPathExpression distributionListExpression = xpath.compile("document/publication/distributions/documentDistributionInfo/hashkey");
-                                NodeList hashkeys = (NodeList) distributionListExpression.evaluate(imported, XPathConstants.NODESET);
+                            XPathExpression distributionListExpression = xpath.compile("document/publication/distributions/documentDistributionInfo/hashkey");
+                            NodeList hashkeys = (NodeList) distributionListExpression.evaluate(imported, XPathConstants.NODESET);
 
 //                                showXML(imported);
 
-                                boolean hasFulltext = false;
+                            boolean hasFulltext = false;
 //
-                                if (hashkeys != null && hashkeys.getLength() > 0) {
-                                    for (int j = 0; j < hashkeys.getLength(); j++) {
+                            if (hashkeys != null && hashkeys.getLength() > 0) {
+                                for (int j = 0; j < hashkeys.getLength(); j++) {
 //                                        Node hashkey = hashkeys.item(j);
 //                                        if (hashkey != null) {
 //                                            hasFulltext = true;
 //                                            System.out.println(hashkey.getTextContent());
 //                                        }
-                                    }
-                                    countFulltext++;
-                                } else {
-                                    hasFulltext = false;
                                 }
+                                countFulltext++;
+                            } else {
+                                hasFulltext = false;
+                            }
 
-                                XPathExpression abstractListExpression = xpath.compile("document/publication/abstracts/abstract");
-                                NodeList abstracts = (NodeList) abstractListExpression.evaluate(imported, XPathConstants.NODESET);
+                            XPathExpression abstractListExpression = xpath.compile("document/publication/abstracts/abstract");
+                            NodeList abstracts = (NodeList) abstractListExpression.evaluate(imported, XPathConstants.NODESET);
 
-                                if (abstracts != null) {
-                                    StringBuilder abstractText = new StringBuilder();
-                                    for (int j = 0; j < abstracts.getLength(); j++) {
-                                        Node node = abstracts.item(j);
-                                        if (node != null)
-                                            abstractText.append(node.getTextContent()).append("\n");
-                                    }
-                                    countAbstracts++;
+                            if (abstracts != null) {
+                                StringBuilder abstractText = new StringBuilder();
+                                for (int j = 0; j < abstracts.getLength(); j++) {
+                                    Node node = abstracts.item(j);
+                                    if (node != null)
+                                        abstractText.append(node.getTextContent()).append("\n");
+                                }
+                                countAbstracts++;
 //                                    System.out.println(abstractText.toString());
-                                }
+                            }
 //                            }
                         }
                         System.out.println("Fulltext: " + countFulltext);
@@ -150,4 +199,8 @@ public class FetchMetadataTaskTest {
         }
     }
 
+    private void showXML(Node node) throws TransformerException, IOException {
+        Transformer transformer = TransformerFactory.newInstance().newTransformer();
+        transformer.transform(new DOMSource(node), new StreamResult(System.out));
+    }
 }

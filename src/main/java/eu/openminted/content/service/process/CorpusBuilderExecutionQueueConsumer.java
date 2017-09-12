@@ -1,25 +1,20 @@
 package eu.openminted.content.service.process;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import eu.openminted.content.connector.ContentConnector;
 import eu.openminted.content.connector.Query;
+import eu.openminted.content.connector.SearchResult;
 import eu.openminted.content.service.cache.CacheClient;
 import eu.openminted.content.service.database.CorpusBuilderInfoDao;
 import eu.openminted.content.service.mail.EmailMessage;
-import eu.openminted.content.service.messages.JMSMessage;
 import eu.openminted.content.service.messages.JMSProducer;
 import eu.openminted.content.service.model.CorpusBuilderInfoModel;
-import eu.openminted.corpus.CorpusBuildingState;
 import eu.openminted.corpus.CorpusStatus;
 import eu.openminted.registry.domain.Corpus;
 import eu.openminted.store.restclient.StoreRESTClient;
 import org.apache.log4j.Logger;
-import org.mitre.openid.connect.model.OIDCAuthenticationToken;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -104,6 +99,10 @@ public class CorpusBuilderExecutionQueueConsumer {
                                 for (ContentConnector connector : contentConnectors) {
 
                                     if (connectors.size() > 0 && !connectors.contains(connector.getSourceName()))
+                                        continue;
+
+                                    SearchResult searchResult = connector.search(query);
+                                    if (searchResult.getTotalHits() == 0)
                                         continue;
 
                                     FetchMetadataTask task = new FetchMetadataTask(storeRESTClient,

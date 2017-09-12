@@ -1,6 +1,8 @@
 package eu.openminted.content.service;
 
+import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import eu.openminted.content.connector.ContentConnector;
 import eu.openminted.content.connector.LanguageConverter;
@@ -29,6 +31,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -301,7 +304,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             DistributionLoc distributionLoc = new DistributionLoc();
             distributionLoc.setDistributionMedium(DistributionMediumEnum.DOWNLOADABLE);
 
-            distributionLoc.setDistributionLocation(registryHost + "/omtd-registry/request/corpus/download?archiveId=" + archiveID);
+            distributionLoc.setDistributionLocation(registryHost + "/request/corpus/download?archiveId=" + archiveID);
             datasetDistributionInfo.getDistributionLoc().add(distributionLoc);
 
             distributionInfos.add(datasetDistributionInfo);
@@ -347,7 +350,14 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                 if (contentConnectors != null) {
                     corpora.add(corpusMetadata);
                     corpusBuilderInfoDao.updateStatus(corpusId, CorpusStatus.SUBMITTED);
+                    CorpusBuilderInfoModel corpusBuilderInfoModel = corpusBuilderInfoDao.find(corpusId);
+                    Query query = new ObjectMapper().readValue(corpusBuilderInfoModel.getQuery(), Query.class);
+
                     for (ContentConnector connector : contentConnectors) {
+                        SearchResult searchResult = connector.search(query);
+                        if (searchResult.getTotalHits() == 0)
+                            continue;
+
                         CorpusBuildingState corpusBuildingState = new CorpusBuildingState();
                         corpusBuildingState.setId(corpusId + "@" + connector.getSourceName());
                         corpusBuildingState.setToken(authenticationSub);
@@ -363,6 +373,12 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
         } catch (ClassCastException e) {
             log.error("User is not authenticated to build corpus", e);
+        } catch (JsonParseException e) {
+            e.printStackTrace();
+        } catch (JsonMappingException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
