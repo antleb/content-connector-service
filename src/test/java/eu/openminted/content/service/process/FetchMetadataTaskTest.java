@@ -43,9 +43,6 @@ public class FetchMetadataTaskTest {
     @Autowired
     ContentServiceController controller;
 
-//    @Autowired
-//    CorpusBuilder corpusBuilder;
-
     Query query;
 
     @Before
