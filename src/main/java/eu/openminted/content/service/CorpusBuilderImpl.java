@@ -173,6 +173,24 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                 sourceFacet.getValues().add(value);
 
                 result.merge(res);
+
+                // Remove values with count 0 and set labels to facets
+                result.getFacets().forEach(facet-> {
+                    List<Value> valuesToRemove = new ArrayList<>();
+                    facet.getValues().forEach(value1 -> {
+
+                        if (value1.getCount() == 0) valuesToRemove.add(value1);
+                    });
+
+                    if (valuesToRemove.size() > 0) {
+                        facet.getValues().removeAll(valuesToRemove);
+                    }
+
+                    OMTDFacetEnum facetEnum = OMTDFacetEnum.fromValue(facet.getField());
+                    if (facetEnum != null)
+                        facet.setLabel(OMTDFacetInitializer.getOmtdFacetLabels().get(facetEnum));
+                });
+
                 sourcesBuilder.append(connector.getSourceName()).append(" and ");
             }
             sourcesBuilder = sourcesBuilder.delete(sourcesBuilder.lastIndexOf(" and "), sourcesBuilder.length());
