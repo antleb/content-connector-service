@@ -50,6 +50,26 @@ public class FetchMetadataTaskTest {
         query = new Query();
         query.setFrom(0);
         query.setTo(1);
+    }
+
+    @Test
+    @Ignore
+    public void testUnwantedValues() {
+        query.setParams(new HashMap<>());
+        query.getParams().put("documentlanguage", new ArrayList<>());
+        query.getParams().get("documentlanguage").add("Spanish");
+
+        SearchResult searchResult = controller.browse(query);
+        if (searchResult != null) {
+            searchResult.getFacets().stream().forEach(facet -> {
+                facet.getValues().stream().forEach(value -> System.out.println("Facet " + facet.getLabel() + ": "+ value.getValue() + ": " + value.getCount()));
+            });
+        }
+    }
+
+    @Test
+    @Ignore
+    public void testBrowse() {
         query.setParams(new HashMap<>());
         query.getParams().put("licence", new ArrayList<>());
         query.getParams().get("licence").add("Embargo");
@@ -57,11 +77,7 @@ public class FetchMetadataTaskTest {
         query.getParams().get("publicationyear").add("2009");
 
         query.setKeyword("alekos");
-    }
 
-    @Test
-    @Ignore
-    public void testBrowse() {
 
         query.getParams().put("source", new ArrayList<>());
         query.getParams().get("source").add("OpenAIRE");
@@ -84,6 +100,7 @@ public class FetchMetadataTaskTest {
     @Test
     @Ignore
     public void testBrowseOnlyCORE() {
+        query.setParams(new HashMap<>());
 //        query.getParams().put("source", new ArrayList<>());
 //        query.getParams().get("source").add("CORE");
 

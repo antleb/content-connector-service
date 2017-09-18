@@ -77,11 +77,24 @@ public class ContentServiceImpl implements ContentService {
 
         result.getFacets().add(sourceFacet);
 
-        for (Facet facet : result.getFacets()) {
+
+        // Remove values with count 0 and set labels to facets
+        result.getFacets().forEach(facet-> {
+            List<Value> valuesToRemove = new ArrayList<>();
+            facet.getValues().forEach(value -> {
+
+                if (value.getCount() == 0) valuesToRemove.add(value);
+            });
+
+            if (valuesToRemove.size() > 0) {
+                facet.getValues().removeAll(valuesToRemove);
+            }
+
             OMTDFacetEnum facetEnum = OMTDFacetEnum.fromValue(facet.getField());
             if (facetEnum != null)
-            facet.setLabel(OMTDFacetInitializer.getOmtdFacetLabels().get(facetEnum));
-        }
+                facet.setLabel(OMTDFacetInitializer.getOmtdFacetLabels().get(facetEnum));
+        });
+
         return result;
     }
 
