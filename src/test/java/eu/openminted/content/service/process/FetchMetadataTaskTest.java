@@ -69,6 +69,27 @@ public class FetchMetadataTaskTest {
 
     @Test
     @Ignore
+    public void testLanguageValues() {
+        query.setParams(new HashMap<>());
+
+        /*
+        start=0&rows=1&facet=true&facet.field=instancetypename
+        &facet.field=resultdateofacceptance&facet.field=resultrights
+        &facet.field=resultlanguagename
+        &fq=resultlanguagename:Bokmål+OR+resultlanguagename:+Norwegian;+Norwegian+Bokmål
+        &fq=resulttypename:publication&fq=deletedbyinference:false&fq=resultrights:Open+Access&fl=__result&q=*:*
+         */
+
+        SearchResult searchResult = controller.browse(query);
+        if (searchResult != null) {
+            searchResult.getFacets().stream().forEach(facet -> {
+                facet.getValues().stream().forEach(value -> System.out.println("Facet " + facet.getLabel() + ": "+ value.getValue() + ": " + value.getCount()));
+            });
+        }
+    }
+
+    @Test
+    @Ignore
     public void testBrowse() {
         query.setParams(new HashMap<>());
         query.getParams().put("licence", new ArrayList<>());
