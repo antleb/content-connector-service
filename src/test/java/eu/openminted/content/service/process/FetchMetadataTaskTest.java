@@ -68,9 +68,11 @@ public class FetchMetadataTaskTest {
     }
 
     @Test
-    @Ignore
+//    @Ignore
     public void testLanguageValues() {
         query.setParams(new HashMap<>());
+        query.getParams().put("documentlanguage", new ArrayList<>());
+        query.getParams().get("documentlanguage").add("Bokmål, Norwegian; Norwegian Bokmål");
 
         /*
         start=0&rows=1&facet=true&facet.field=instancetypename
