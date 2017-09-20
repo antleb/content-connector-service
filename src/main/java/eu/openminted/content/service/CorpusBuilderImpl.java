@@ -5,11 +5,11 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import eu.openminted.content.connector.ContentConnector;
-import eu.openminted.content.connector.LanguageConverter;
+import eu.openminted.content.connector.utils.language.LanguageConverter;
 import eu.openminted.content.connector.Query;
 import eu.openminted.content.connector.SearchResult;
-import eu.openminted.content.connector.faceting.OMTDFacetEnum;
-import eu.openminted.content.connector.faceting.OMTDFacetInitializer;
+import eu.openminted.content.connector.utils.faceting.OMTDFacetEnum;
+import eu.openminted.content.connector.utils.faceting.OMTDFacetInitializer;
 import eu.openminted.content.service.database.CorpusBuilderInfoDao;
 import eu.openminted.content.service.process.CorpusBuilderExecutionQueueConsumer;
 import eu.openminted.content.service.messages.JMSConsumer;
@@ -39,6 +39,8 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.stream.Collectors;
+
+import static eu.openminted.content.connector.utils.SearchExtensions.merge;
 
 @Component
 @ComponentScan("eu.openminted.content")
@@ -172,7 +174,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
                 sourceFacet.getValues().add(value);
 
-                result.merge(res);
+                merge(result, res);
 
                 // Remove values with count 0 and set labels to facets
                 result.getFacets().forEach(facet-> {

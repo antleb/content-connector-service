@@ -68,7 +68,7 @@ public class FetchMetadataTaskTest {
     }
 
     @Test
-//    @Ignore
+    @Ignore
     public void testLanguageValues() {
         query.setParams(new HashMap<>());
         query.getParams().put("documentlanguage", new ArrayList<>());

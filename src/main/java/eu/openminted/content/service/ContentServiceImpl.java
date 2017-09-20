@@ -3,8 +3,8 @@ package eu.openminted.content.service;
 import eu.openminted.content.connector.ContentConnector;
 import eu.openminted.content.connector.Query;
 import eu.openminted.content.connector.SearchResult;
-import eu.openminted.content.connector.faceting.OMTDFacetEnum;
-import eu.openminted.content.connector.faceting.OMTDFacetInitializer;
+import eu.openminted.content.connector.utils.faceting.OMTDFacetEnum;
+import eu.openminted.content.connector.utils.faceting.OMTDFacetInitializer;
 import eu.openminted.content.service.messages.JMSProducer;
 import eu.openminted.registry.core.domain.Facet;
 import eu.openminted.registry.core.domain.Value;
@@ -13,6 +13,8 @@ import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import static eu.openminted.content.connector.utils.SearchExtensions.merge;
 
 @Component
 public class ContentServiceImpl implements ContentService {
@@ -71,7 +73,7 @@ public class ContentServiceImpl implements ContentService {
                 value.setCount(res.getTotalHits());
 
                 sourceFacet.getValues().add(value);
-                result.merge(res).setFrom(res.getFrom()).setTo(res.getTo());
+                merge(result, res);
             }
         }
 
