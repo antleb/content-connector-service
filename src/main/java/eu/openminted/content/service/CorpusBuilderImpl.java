@@ -1,20 +1,18 @@
 package eu.openminted.content.service;
 
-import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import eu.openminted.content.connector.ContentConnector;
-import eu.openminted.content.connector.utils.language.LanguageConverter;
 import eu.openminted.content.connector.Query;
 import eu.openminted.content.connector.SearchResult;
 import eu.openminted.content.connector.utils.faceting.OMTDFacetEnum;
-import eu.openminted.content.connector.utils.faceting.OMTDFacetInitializer;
+import eu.openminted.content.connector.utils.faceting.OMTDFacetLabels;
+import eu.openminted.content.connector.utils.language.LanguageUtils;
 import eu.openminted.content.service.database.CorpusBuilderInfoDao;
-import eu.openminted.content.service.process.CorpusBuilderExecutionQueueConsumer;
 import eu.openminted.content.service.messages.JMSConsumer;
 import eu.openminted.content.service.messages.JMSProducer;
 import eu.openminted.content.service.model.CorpusBuilderInfoModel;
+import eu.openminted.content.service.process.CorpusBuilderExecutionQueueConsumer;
 import eu.openminted.corpus.CorpusBuilder;
 import eu.openminted.corpus.CorpusBuildingState;
 import eu.openminted.corpus.CorpusStatus;
@@ -46,7 +44,9 @@ import static eu.openminted.content.connector.utils.SearchExtensions.merge;
 @ComponentScan("eu.openminted.content")
 public class CorpusBuilderImpl implements CorpusBuilder {
     private static Logger log = Logger.getLogger(CorpusBuilderImpl.class.getName());
-    private OMTDFacetInitializer OMTDFacetInitializer = new OMTDFacetInitializer();
+
+    @Autowired
+    private OMTDFacetLabels omtdFacetInitializer;
 
     @Autowired(required = false)
     private List<ContentConnector> contentConnectors;
@@ -65,6 +65,9 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
     @Autowired
     private JMSConsumer consumer;
+
+    @Autowired
+    private LanguageUtils languageUtils;
 
     @Autowired
     private CorpusBuilderExecutionQueueConsumer corpusBuilderExecutionQueueConsumer;
@@ -141,7 +144,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         SearchResult result = new SearchResult();
         result.setFacets(new ArrayList<>());
         sourceFacet.setField(OMTDFacetEnum.SOURCE.value());
-        sourceFacet.setLabel(OMTDFacetInitializer.getOmtdFacetLabels().get(OMTDFacetEnum.SOURCE));
+        sourceFacet.setLabel(omtdFacetInitializer.getOmtdFacetLabels().get(OMTDFacetEnum.SOURCE));
         sourceFacet.setValues(new ArrayList<>());
 
         // retrieve connectors from query
@@ -190,7 +193,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
                     OMTDFacetEnum facetEnum = OMTDFacetEnum.fromValue(facet.getField());
                     if (facetEnum != null)
-                        facet.setLabel(OMTDFacetInitializer.getOmtdFacetLabels().get(facetEnum));
+                        facet.setLabel(omtdFacetInitializer.getOmtdFacetLabels().get(facetEnum));
                 });
 
                 sourcesBuilder.append(connector.getSourceName()).append(" and ");
@@ -243,11 +246,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                         LanguageInfo languageInfo = new LanguageInfo();
 
                         String name = value.getValue();
-                        if (LanguageConverter.getInstance().getOpenaireToOMTDName().containsKey(name)) {
-                            name = LanguageConverter.getInstance().getOpenaireToOMTDName().get(name);
-                        }
-
-                        String code = LanguageConverter.getInstance().getLangNameToCode().get(name);
+                        String code = languageUtils.getLangNameToCode().get(name);
                         language.setLanguageTag(name);
                         language.setLanguageId(code);
                         languageInfo.setLanguage(language);
@@ -393,12 +392,8 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
         } catch (ClassCastException e) {
             log.error("User is not authenticated to build corpus", e);
-        } catch (JsonParseException e) {
-            e.printStackTrace();
-        } catch (JsonMappingException e) {
-            e.printStackTrace();
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("IO error while initiating corpus building", e);
         }
     }
 
@@ -461,7 +456,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             storeRESTClient.deleteArchive(model.getArchiveId());
             log.info(corpusBuilderInfoDao.find(s));
         } catch (Exception e) {
-
+            log.error(e);
         }
     }
 
@@ -485,7 +480,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         rightsInfo.setLicenceInfos(new ArrayList<>());
         rightsInfo.getLicenceInfos().add(licenceInfos);
         rightsInfo.setRightsStatement(new ArrayList<>());
-        rightsInfo.getRightsStatement().add(OMTDFacetInitializer.getOmtdGetRightsStmtEnumFromLabel().get(value.getValue()));
+        rightsInfo.getRightsStatement().add(omtdFacetInitializer.getOmtdGetRightsStmtEnumFromLabel().get(value.getValue()));
         return rightsInfo;
     }
 

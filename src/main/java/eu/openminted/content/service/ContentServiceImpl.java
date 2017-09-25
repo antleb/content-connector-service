@@ -4,7 +4,7 @@ import eu.openminted.content.connector.ContentConnector;
 import eu.openminted.content.connector.Query;
 import eu.openminted.content.connector.SearchResult;
 import eu.openminted.content.connector.utils.faceting.OMTDFacetEnum;
-import eu.openminted.content.connector.utils.faceting.OMTDFacetInitializer;
+import eu.openminted.content.connector.utils.faceting.OMTDFacetLabels;
 import eu.openminted.content.service.messages.JMSProducer;
 import eu.openminted.registry.core.domain.Facet;
 import eu.openminted.registry.core.domain.Value;
@@ -29,9 +29,10 @@ public class ContentServiceImpl implements ContentService {
     private List<ContentConnector> contentConnectors;
 
     @Autowired
-    ServiceStatus serviceStatus;
+    private ServiceStatus serviceStatus;
 
-    private OMTDFacetInitializer OMTDFacetInitializer = new OMTDFacetInitializer();
+    @Autowired
+    private OMTDFacetLabels omtdFacetInitializer;
 
     @Override
     public SearchResult search(Query query) {
@@ -94,7 +95,7 @@ public class ContentServiceImpl implements ContentService {
 
             OMTDFacetEnum facetEnum = OMTDFacetEnum.fromValue(facet.getField());
             if (facetEnum != null)
-                facet.setLabel(OMTDFacetInitializer.getOmtdFacetLabels().get(facetEnum));
+                facet.setLabel(omtdFacetInitializer.getOmtdFacetLabels().get(facetEnum));
         });
 
         return result;

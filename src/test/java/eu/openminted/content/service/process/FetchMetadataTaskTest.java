@@ -3,9 +3,13 @@ package eu.openminted.content.service.process;
 import eu.openminted.content.connector.ContentConnector;
 import eu.openminted.content.connector.Query;
 import eu.openminted.content.connector.SearchResult;
+import eu.openminted.content.connector.utils.faceting.OMTDFacetEnum;
+import eu.openminted.content.connector.utils.faceting.OMTDFacetLabels;
 import eu.openminted.content.service.OmtdNamespace;
 import eu.openminted.content.service.ServiceConfiguration;
 import eu.openminted.content.service.rest.ContentServiceController;
+import eu.openminted.registry.domain.PublicationTypeEnum;
+import eu.openminted.registry.domain.RightsStatementEnum;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -38,12 +42,15 @@ import java.util.List;
 public class FetchMetadataTaskTest {
 
     @Autowired
-    List<ContentConnector> contentConnectors;
+    private List<ContentConnector> contentConnectors;
 
     @Autowired
-    ContentServiceController controller;
+    private ContentServiceController controller;
 
-    Query query;
+    @Autowired
+    private OMTDFacetLabels omtdFacetInitializer;
+
+    private Query query;
 
     @Before
     public void init() {
@@ -61,9 +68,37 @@ public class FetchMetadataTaskTest {
 
         SearchResult searchResult = controller.browse(query);
         if (searchResult != null) {
-            searchResult.getFacets().stream().forEach(facet -> {
-                facet.getValues().stream().forEach(value -> System.out.println("Facet " + facet.getLabel() + ": "+ value.getValue() + ": " + value.getCount()));
-            });
+            searchResult.getFacets().forEach(facet -> facet.getValues().forEach(value -> System.out.println("Facet " + facet.getLabel() + ": " + value.getValue() + ": " + value.getCount())));
+        }
+    }
+
+    @Test
+    @Ignore
+    public void testPublicationValues() {
+
+        query.setParams(new HashMap<>());
+        query.getParams().put(OMTDFacetEnum.PUBLICATION_TYPE.value(), new ArrayList<>());
+        query.getParams().get(OMTDFacetEnum.PUBLICATION_TYPE.value()).add(omtdFacetInitializer.getOmtdPublicationTypeLabels().get(PublicationTypeEnum.RESEARCH_PROPOSAL));
+        query.getParams().get(OMTDFacetEnum.PUBLICATION_TYPE.value()).add(PublicationTypeEnum.BACHELOR_THESIS.toString());
+
+        SearchResult searchResult = controller.browse(query);
+        if (searchResult != null) {
+            searchResult.getFacets().forEach(facet -> facet.getValues().forEach(value -> System.out.println("Facet " + facet.getLabel() + ": " + value.getValue() + ": " + value.getCount())));
+        }
+    }
+
+    @Test
+    @Ignore
+    public void testRightsValues() {
+
+        query.setParams(new HashMap<>());
+        query.getParams().put(OMTDFacetEnum.RIGHTS.value(), new ArrayList<>());
+        query.getParams().get(OMTDFacetEnum.RIGHTS.value()).add(omtdFacetInitializer.getOmtdRightsStmtLabels().get(RightsStatementEnum.OPEN_ACCESS));
+        query.getParams().get(OMTDFacetEnum.RIGHTS.value()).add(RightsStatementEnum.RESTRICTED_ACCESS.toString());
+
+        SearchResult searchResult = controller.browse(query);
+        if (searchResult != null) {
+            searchResult.getFacets().forEach(facet -> facet.getValues().forEach(value -> System.out.println("Facet " + facet.getLabel() + ": " + value.getValue() + ": " + value.getCount())));
         }
     }
 
@@ -72,7 +107,10 @@ public class FetchMetadataTaskTest {
     public void testLanguageValues() {
         query.setParams(new HashMap<>());
         query.getParams().put("documentlanguage", new ArrayList<>());
-        query.getParams().get("documentlanguage").add("Bokmål, Norwegian; Norwegian Bokmål");
+//        query.getParams().get("documentlanguage").add("Greek, Ancient (to 1453)");
+//        query.getParams().get("documentlanguage").add("Bokmål, Norwegian; Norwegian Bokmål");
+        query.getParams().get("documentlanguage").add("Official Aramaic (700-300 BCE); Imperial Aramaic (700-300 BCE)");
+//        query.getParams().get("documentlanguage").add("Official Aramaic (700-300 Bce); Imperial Aramaic (700-300 Bce)");
 
         /*
         start=0&rows=1&facet=true&facet.field=instancetypename
@@ -84,9 +122,7 @@ public class FetchMetadataTaskTest {
 
         SearchResult searchResult = controller.browse(query);
         if (searchResult != null) {
-            searchResult.getFacets().stream().forEach(facet -> {
-                facet.getValues().stream().forEach(value -> System.out.println("Facet " + facet.getLabel() + ": "+ value.getValue() + ": " + value.getCount()));
-            });
+            searchResult.getFacets().forEach(facet -> facet.getValues().forEach(value -> System.out.println("Facet " + facet.getLabel() + ": " + value.getValue() + ": " + value.getCount())));
         }
     }
 
@@ -127,13 +163,9 @@ public class FetchMetadataTaskTest {
 //        query.getParams().put("source", new ArrayList<>());
 //        query.getParams().get("source").add("CORE");
 
-        try {
-            SearchResult searchResult = controller.browse(query);
-            if (searchResult != null) {
-                System.out.println("Results from CORE: " + searchResult.getTotalHits());
-            }
-        } catch (Exception e) {
-
+        SearchResult searchResult = controller.browse(query);
+        if (searchResult != null) {
+            System.out.println("Results from CORE: " + searchResult.getTotalHits());
         }
     }
 
@@ -156,8 +188,8 @@ public class FetchMetadataTaskTest {
         XPath xpath = XPathFactory.newInstance().newXPath();
         xpath.setNamespaceContext(new OmtdNamespace());
 
-        Document currentDoc = null;
-        NodeList nodes = null;
+        Document currentDoc;
+        NodeList nodes;
 
 
         if (contentConnectors != null) {
@@ -202,17 +234,18 @@ public class FetchMetadataTaskTest {
 //
                             if (hashkeys != null && hashkeys.getLength() > 0) {
                                 for (int j = 0; j < hashkeys.getLength(); j++) {
-//                                        Node hashkey = hashkeys.item(j);
-//                                        if (hashkey != null) {
-//                                            hasFulltext = true;
-//                                            System.out.println(hashkey.getTextContent());
-//                                        }
+                                        Node hashkey = hashkeys.item(j);
+                                        if (hashkey != null) {
+                                            hasFulltext = true;
+                                            System.out.println(hashkey.getTextContent());
+                                        }
                                 }
                                 countFulltext++;
                             } else {
                                 hasFulltext = false;
                             }
 
+                            System.out.println(hasFulltext);
                             XPathExpression abstractListExpression = xpath.compile("document/publication/abstracts/abstract");
                             NodeList abstracts = (NodeList) abstractListExpression.evaluate(imported, XPathConstants.NODESET);
 
