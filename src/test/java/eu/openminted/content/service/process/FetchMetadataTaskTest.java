@@ -109,7 +109,8 @@ public class FetchMetadataTaskTest {
         query.getParams().put("documentlanguage", new ArrayList<>());
 //        query.getParams().get("documentlanguage").add("Greek, Ancient (to 1453)");
 //        query.getParams().get("documentlanguage").add("Bokmål, Norwegian; Norwegian Bokmål");
-        query.getParams().get("documentlanguage").add("Official Aramaic (700-300 BCE); Imperial Aramaic (700-300 BCE)");
+        query.getParams().get("documentlanguage").add("Greek, Modern (1453-)");
+//        query.getParams().get("documentlanguage").add("Official Aramaic (700-300 BCE); Imperial Aramaic (700-300 BCE)");
 //        query.getParams().get("documentlanguage").add("Official Aramaic (700-300 Bce); Imperial Aramaic (700-300 Bce)");
 
         /*
