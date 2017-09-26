@@ -103,13 +103,17 @@ public class FetchMetadataTaskTest {
     }
 
     @Test
-    @Ignore
+//    @Ignore
     public void testLanguageValues() {
         query.setParams(new HashMap<>());
         query.getParams().put("documentlanguage", new ArrayList<>());
+//        query.getParams().get("documentlanguage").add("Greek, Modern (1453-)");
+//        query.getParams().get("documentlanguage").add("Czech");
+//        query.getParams().get("documentlanguage").add("Catalan; Valencian");
+        query.getParams().get("documentlanguage").add("English, Middle (1100-1500)");
 //        query.getParams().get("documentlanguage").add("Greek, Ancient (to 1453)");
 //        query.getParams().get("documentlanguage").add("Bokmål, Norwegian; Norwegian Bokmål");
-        query.getParams().get("documentlanguage").add("Greek, Modern (1453-)");
+//        query.getParams().get("documentlanguage").add("French");
 //        query.getParams().get("documentlanguage").add("Official Aramaic (700-300 BCE); Imperial Aramaic (700-300 BCE)");
 //        query.getParams().get("documentlanguage").add("Official Aramaic (700-300 Bce); Imperial Aramaic (700-300 Bce)");
 
