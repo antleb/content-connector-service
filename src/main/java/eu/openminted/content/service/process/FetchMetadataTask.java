@@ -163,7 +163,7 @@ public class FetchMetadataTask implements Runnable {
 
         if (nodes != null) {
             corpusBuildingState.setCurrentStatus(CorpusStatus.PROCESSING_METADATA.toString());
-            producer.sendMessage(CorpusBuildingState.class.toString(), corpusBuildingState);
+            producer.sendMessage(corpusBuildingState);
 
             for (int i = 0; i < nodes.getLength(); i++) {
                 if (isInterrupted) break;
@@ -236,7 +236,7 @@ public class FetchMetadataTask implements Runnable {
                     corpusBuildingState.setTotalRejected(totalRejected);
                     corpusBuildingState.setMetadataProgress(metadataProgress);
                     if (metadataProgress > 0 && metadataProgress % 10 == 0) {
-                        producer.sendMessage(CorpusBuildingState.class.toString(), corpusBuildingState);
+                        producer.sendMessage(corpusBuildingState);
                     }
                 } catch (XPathExpressionException e) {
                     log.error("FetchMetadataTask.run-Fetching Metadata -XPathExpressionException ", e);
@@ -246,12 +246,12 @@ public class FetchMetadataTask implements Runnable {
             }
 
             try {
-                producer.sendMessage(CorpusBuildingState.class.toString(), corpusBuildingState);
+                producer.sendMessage(corpusBuildingState);
                 // closing previous stream
                 IOUtils.closeQuietly(inputStream);
                 corpusBuildingState.setTotalFulltext(totalFulltext);
                 corpusBuildingState.setCurrentStatus(CorpusStatus.PROCESSING_FULLTEXT.toString());
-                producer.sendMessage(CorpusBuildingState.class.toString(), corpusBuildingState);
+                producer.sendMessage(corpusBuildingState);
 
                 for (String identifier : identifiers.keySet()) {
                     if (isInterrupted) break;
@@ -268,7 +268,7 @@ public class FetchMetadataTask implements Runnable {
                                     fulltextProgress++;
                                     corpusBuildingState.setFulltextProgress(fulltextProgress);
                                     if (totalFulltext > 0 && fulltextProgress % 10 == 0) {
-                                        producer.sendMessage(CorpusBuildingState.class.toString(), corpusBuildingState);
+                                        producer.sendMessage(corpusBuildingState);
                                     }
                                 }
                                 IOUtils.closeQuietly(fullTextInputStream);
@@ -279,7 +279,7 @@ public class FetchMetadataTask implements Runnable {
                 }
 
                 corpusBuildingState.setCurrentStatus(CorpusStatus.CREATED.toString());
-                producer.sendMessage(CorpusBuildingState.class.toString(), corpusBuildingState);
+                producer.sendMessage(corpusBuildingState);
             } catch (FileNotFoundException e) {
                 log.error("FetchMetadataTask.run- Downloading fulltext -FileNotFoundException ", e);
             } catch (IOException e) {

@@ -26,7 +26,9 @@ public class ConnectorServiceTestConfiguration {
     @Bean
     public static PropertyPlaceholderConfigurer propertyPlaceholderConfigurer() throws IOException {
         final PropertyPlaceholderConfigurer ppc = new PropertyPlaceholderConfigurer();
-        ppc.setLocation(new ClassPathResource("application.properties"));
+        ppc.setLocations(new ClassPathResource("application.properties"), new ClassPathResource("tokens-override.properties"));
+        ppc.setIgnoreUnresolvablePlaceholders(true);
+        ppc.setIgnoreResourceNotFound(true);
         return ppc;
     }
 

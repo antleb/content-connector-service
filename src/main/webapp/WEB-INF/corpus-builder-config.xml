@@ -24,6 +24,7 @@
             <list>
                 <value>classpath*:/application.properties</value>
                 <value>classpath*:/${override-name}-override.properties</value>
+                <value>classpath*:/${tokens}-override.properties</value>
             </list>
         </property>
     </bean>

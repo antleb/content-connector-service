@@ -1,13 +1,11 @@
 package eu.openminted.content.service.messages;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.activemq.ActiveMQConnectionFactory;
+import eu.openminted.content.service.mail.EmailMessage;
+import eu.openminted.corpus.CorpusBuildingState;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jms.core.JmsTemplate;
 import org.springframework.stereotype.Component;
-
-import javax.jms.*;
 
 @Component
 public class JMSProducer {
@@ -16,48 +14,17 @@ public class JMSProducer {
     @org.springframework.beans.factory.annotation.Value("${jms.content.corpus.topic}")
     private String topic;
 
+    @org.springframework.beans.factory.annotation.Value("${jms.content.email.topic}")
+    private String emailTopic;
+
     @Autowired
-    private ActiveMQConnectionFactory connectionFactory;
+    private JmsTemplate jmsTemplate;
 
-    public void send(String message) {
-        try {
-            Connection connection = connectionFactory.createConnection();
-            connection.start();
-            // Create a Session
-            Session session = connection.createSession(false,
-                    Session.AUTO_ACKNOWLEDGE);
-
-            // Create the destination (with Topic)
-            Destination destination = session.createTopic(topic);
-
-            // Create a MessageProducer from the Session to the Topic
-            MessageProducer producer = session.createProducer(destination);
-            producer.setDeliveryMode(DeliveryMode.PERSISTENT);
-
-            // Create a messages
-            TextMessage textMessage = session.createTextMessage(message);
-
-            // Tell the producer to send the message
-            log.debug("Sending Message: " + textMessage);
-            producer.send(textMessage);
-
-            // Clean up
-            session.close();
-            connection.close();
-        } catch (JMSException e) {
-            log.error("Caught Exception", e);
-        }
+    public void sendMessage(EmailMessage emailMessage) {
+        jmsTemplate.convertAndSend(emailTopic, emailMessage);
     }
 
-    public void sendMessage(String type, Object object) {
-        try {
-            JMSMessage jmsMessage = new JMSMessage();
-            jmsMessage.setType(type);
-            jmsMessage.setMessage(new ObjectMapper().writeValueAsString(object));
-            String messageJson = new ObjectMapper().writeValueAsString(jmsMessage);
-            new Thread(() -> this.send(messageJson)).start();
-        } catch (JsonProcessingException e) {
-            log.error("error parsing object to json", e);
-        }
+    public void sendMessage(CorpusBuildingState corpusBuildingState) {
+        jmsTemplate.convertAndSend(topic, corpusBuildingState);
     }
 }

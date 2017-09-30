@@ -68,12 +68,12 @@ public class ContentServiceImpl implements ContentService {
                 if (connectors.size() > 0 && !connectors.contains(connector.getSourceName())) continue;
 
                 SearchResult res = connector.search(query);
-                Value value = new Value();
 
-                value.setValue(connector.getSourceName());
-                value.setCount(res.getTotalHits());
+                Value sourceValue = new Value();
+                sourceValue.setValue(connector.getSourceName());
+                sourceValue.setCount(res.getTotalHits());
+                sourceFacet.getValues().add(sourceValue);
 
-                sourceFacet.getValues().add(value);
                 merge(result, res);
             }
         }

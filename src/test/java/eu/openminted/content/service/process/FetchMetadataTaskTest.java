@@ -103,14 +103,18 @@ public class FetchMetadataTaskTest {
     }
 
     @Test
-//    @Ignore
+    @Ignore
     public void testLanguageValues() {
         query.setParams(new HashMap<>());
         query.getParams().put("documentlanguage", new ArrayList<>());
+        query.getParams().put("publicationyear", new ArrayList<>());
 //        query.getParams().get("documentlanguage").add("Greek, Modern (1453-)");
+        query.getParams().get("documentlanguage").add("Lithuanian");
+        query.getParams().get("publicationyear").add("2010");
+        query.setKeyword("digital");
 //        query.getParams().get("documentlanguage").add("Czech");
 //        query.getParams().get("documentlanguage").add("Catalan; Valencian");
-        query.getParams().get("documentlanguage").add("English, Middle (1100-1500)");
+//        query.getParams().get("documentlanguage").add("English, Middle (1100-1500)");
 //        query.getParams().get("documentlanguage").add("Greek, Ancient (to 1453)");
 //        query.getParams().get("documentlanguage").add("Bokmål, Norwegian; Norwegian Bokmål");
 //        query.getParams().get("documentlanguage").add("French");
@@ -127,7 +131,7 @@ public class FetchMetadataTaskTest {
 
         SearchResult searchResult = controller.browse(query);
         if (searchResult != null) {
-            searchResult.getFacets().forEach(facet -> facet.getValues().forEach(value -> System.out.println("Facet " + facet.getLabel() + ": " + value.getValue() + ": " + value.getCount())));
+            searchResult.getFacets().forEach(facet -> facet.getValues().forEach(value -> System.out.println("Facet " + facet.getLabel() + ": " + value.getValue() + (value.getLabel() != null ? "/" +value.getLabel():"")  + ": " + value.getCount())));
         }
     }
 

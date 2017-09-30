@@ -158,7 +158,7 @@ public class CorpusBuilderExecutionQueueConsumer {
                                 emailMessage.setSubject("OpenMinTeD Corpus build request");
                                 emailMessage.setText(text);
 
-                                producer.sendMessage(EmailMessage.class.toString(), emailMessage);
+                                producer.sendMessage(emailMessage);
                             }
 
 //                            for (ContentConnector connector : contentConnectors) {

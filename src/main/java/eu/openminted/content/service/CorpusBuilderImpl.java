@@ -95,8 +95,6 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                 log.error("Error executing queue consumer");
             }
         }).start();
-
-        new Thread(() -> consumer.listen()).start();
     }
 
     /**
@@ -246,7 +244,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                         LanguageInfo languageInfo = new LanguageInfo();
 
                         String name = value.getValue();
-                        String code = languageUtils.getLangNameToCode().get(name);
+                        String code = languageUtils.getLangNameToCode().get(name.toLowerCase());
                         language.setLanguageTag(name);
                         language.setLanguageId(code);
                         languageInfo.setLanguage(language);
@@ -338,13 +336,6 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             } catch (ClassCastException e) {
                 log.error("User is not authenticated to build corpus", e);
             }
-            final String prepareMessage = "Prepare corpus Query: " + queryString;
-            new Thread(() -> producer.sendMessage("String", prepareMessage)).start();
-            new Thread(() -> producer.sendMessage("String", "Prepare corpus CorpusID: " + metadataIdentifier.getValue())).start();
-            new Thread(() -> producer.sendMessage("String", "Prepare corpus ArchiveID: " + archiveID)).start();
-            new Thread(() -> producer.sendMessage("String", "Prepare corpus SubarchiveID: " + archiveID + "/metadata")).start();
-            new Thread(() -> producer.sendMessage("String", "Prepare corpus SubarchiveID: " + archiveID + "/fulltext")).start();
-            new Thread(() -> producer.sendMessage("String", "Prepare corpus SubarchiveID: " + archiveID + "/abstract")).start();
         }
 
         return corpusMetadata;
@@ -383,7 +374,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                         corpusBuildingState.setCurrentStatus(CorpusStatus.SUBMITTED.toString());
                         corpusBuildingState.setConnector(connector.getSourceName());
                         corpusBuildingState.setTotalHits(corpusMetadata.getCorpusInfo().getCorpusSubtypeSpecificInfo().getRawCorpusInfo().getCorpusMediaPartsType().getCorpusTextParts().size());
-                        new Thread(() -> producer.sendMessage(CorpusBuildingState.class.toString(), corpusBuildingState)).start();
+                        producer.sendMessage(corpusBuildingState);
                     }
                 }
             } else {
