@@ -11,8 +11,8 @@ import org.springframework.stereotype.Component;
 public class JMSProducer {
     private static Logger log = Logger.getLogger(JMSProducer.class.getName());
 
-    @org.springframework.beans.factory.annotation.Value("${jms.content.corpus.topic}")
-    private String topic;
+    @org.springframework.beans.factory.annotation.Value("${jms.corpus.state.topic}")
+    private String stateTopic;
 
     @org.springframework.beans.factory.annotation.Value("${jms.content.email.topic}")
     private String emailTopic;
@@ -25,6 +25,6 @@ public class JMSProducer {
     }
 
     public void sendMessage(CorpusBuildingState corpusBuildingState) {
-        jmsTemplate.convertAndSend(topic, corpusBuildingState);
+        jmsTemplate.convertAndSend(stateTopic, corpusBuildingState);
     }
 }
