@@ -23,7 +23,7 @@
         <property name="locations">
             <list>
                 <value>classpath*:/application.properties</value>
-                <value>classpath*:/${override-name}-override.properties</value>
+                <!--<value>classpath*:/${override-name}-override.properties</value>-->
             </list>
         </property>
     </bean>
