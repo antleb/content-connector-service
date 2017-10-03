@@ -89,7 +89,7 @@ public class FetchMetadataTask implements Runnable {
         File archive = new File(archivePath);
         if (archive.mkdirs()) log.debug("Creating " + archivePath + " directory");
         File metadataFile = new File(archive.getPath() + "/" + archiveId + ".xml");
-        File downloadFile = new File(archive.getPath() + "/" + archiveId + ".pdf");
+        File downloadFile = new File(archive.getPath() + "/" + archiveId);
         File abstractFile = new File(archive.getPath() + "/" + archiveId + ".txt");
         Map<String, List<String>> identifiers = new HashMap<>();
 
@@ -181,24 +181,38 @@ public class FetchMetadataTask implements Runnable {
                         continue;
                     } else {
                         // Find hashkeys from imported node
-                        XPathExpression distributionListExpression = xpath.compile("document/publication/distributions/documentDistributionInfo/hashkey");
-                        NodeList hashkeys = (NodeList) distributionListExpression.evaluate(imported, XPathConstants.NODESET);
+                        XPathExpression distributionListExpression = xpath.compile("document/publication/distributions/documentDistributionInfo");
+                        NodeList documentDistributionInfos = (NodeList) distributionListExpression.evaluate(imported, XPathConstants.NODESET);
 
                         boolean hasFulltext = false;
 
-                        if (hashkeys != null && hashkeys.getLength() > 0) {
-                            for (int j = 0; j < hashkeys.getLength(); j++) {
-                                Node hashkey = hashkeys.item(j);
-                                if (hashkey != null) {
+                        if (documentDistributionInfos != null && documentDistributionInfos.getLength() > 0) {
+                            for (int j = 0; j < documentDistributionInfos.getLength(); j++) {
+
+                                Node documentDistributionInfo = documentDistributionInfos.item(j);
+                                XPathExpression hashkeyExpression = xpath.compile("hashkey");
+                                XPathExpression mimetypeExpression = xpath.compile("mimeType");
+                                Node hashkey = (Node) hashkeyExpression.evaluate(documentDistributionInfo, XPathConstants.NODE);
+                                Node mimetype = (Node) mimetypeExpression.evaluate(documentDistributionInfo, XPathConstants.NODE);
+
+
+                                log.error("\n\n\n\n" +  hashkey.getTextContent());
+                                log.error(mimetype.getTextContent()+ "\n\n\n\n" );
+
+                                if (hashkey != null && mimetype != null) {
                                     hasFulltext = true;
 
                                     if (!identifiers.keySet().contains(identifier))
                                         identifiers.put(identifier, new ArrayList<>());
 
+                                    log.error("\n\n\n\n\n" + hashkey.getTextContent() + "@" + mimetype.getTextContent() + "\n\n\n\n\n");
+
                                     identifiers.get(identifier).add(hashkey.getTextContent());
                                     totalFulltext++;
                                 }
                             }
+
+                            log.error("\n\nFOINAL LENGTH: " + documentDistributionInfos.getLength());
                         } else {
                             hasFulltext = false;
                         }
