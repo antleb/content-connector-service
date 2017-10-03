@@ -243,11 +243,10 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                         Language language = new Language();
                         LanguageInfo languageInfo = new LanguageInfo();
 
-                        String name = value.getValue();
-                        String code = languageUtils.getLangNameToCode().get(name.toLowerCase());
-                        language.setLanguageTag(name);
-                        language.setLanguageId(code);
+                        language.setLanguageTag(value.getLabel());
+                        language.setLanguageId(value.getValue());
                         languageInfo.setLanguage(language);
+
                         SizeInfo languageSizeInfo = new SizeInfo();
                         languageSizeInfo.setSize(String.valueOf(value.getCount()));
                         languageSizeInfo.setSizeUnit(SizeUnitEnum.TEXTS);
