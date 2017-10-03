@@ -71,6 +71,7 @@ public class ContentServiceImpl implements ContentService {
 
                 Value sourceValue = new Value();
                 sourceValue.setValue(connector.getSourceName());
+                sourceValue.setLabel(connector.getSourceName());
                 sourceValue.setCount(res.getTotalHits());
                 sourceFacet.getValues().add(sourceValue);
 
