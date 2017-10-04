@@ -103,17 +103,17 @@ public class FetchMetadataTaskTest {
     }
 
     @Test
-    @Ignore
+//    @Ignore
     public void testLanguageValues() {
         query.setParams(new HashMap<>());
         query.getParams().put("documentlanguage", new ArrayList<>());
-        query.getParams().put("publicationyear", new ArrayList<>());
+//        query.getParams().put("publicationyear", new ArrayList<>());
 //        query.getParams().get("documentlanguage").add("Greek, Modern (1453-)");
 //        query.getParams().get("documentlanguage").add("Lithuanian");
-        query.getParams().get("documentlanguage").add("grc");
-        query.getParams().get("publicationyear").add("2010");
-        query.getParams().get("publicationyear").add("1528");
-        query.setKeyword("digital");
+        query.getParams().get("documentlanguage").add("he");
+//        query.getParams().get("publicationyear").add("2010");
+//        query.getParams().get("publicationyear").add("1528");
+        query.setKeyword("*");
 //        query.getParams().get("documentlanguage").add("Czech");
 //        query.getParams().get("documentlanguage").add("Catalan; Valencian");
 //        query.getParams().get("documentlanguage").add("English, Middle (1100-1500)");

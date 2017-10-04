@@ -10,6 +10,8 @@ import eu.openminted.content.service.mail.EmailMessage;
 import eu.openminted.content.service.messages.JMSProducer;
 import eu.openminted.content.service.model.CorpusBuilderInfoModel;
 import eu.openminted.corpus.CorpusStatus;
+import eu.openminted.registry.core.domain.Facet;
+import eu.openminted.registry.core.domain.Value;
 import eu.openminted.registry.domain.Corpus;
 import eu.openminted.store.restclient.StoreRESTClient;
 import org.apache.log4j.Logger;
@@ -93,16 +95,34 @@ public class CorpusBuilderExecutionQueueConsumer {
                                 if (query.getParams().containsKey("source")
                                         && query.getParams().get("source") != null
                                         && query.getParams().get("source").size() > 0) {
-                                    connectors.addAll(query.getParams().get("source"));
+                                    query.getParams().get("source").forEach(s -> {
+                                        connectors.add(s.toLowerCase());
+                                    });
                                 }
 
                                 for (ContentConnector connector : contentConnectors) {
 
-                                    if (connectors.size() > 0 && !connectors.contains(connector.getSourceName()))
-                                        continue;
 
                                     SearchResult searchResult = connector.search(query);
-                                    if (searchResult.getTotalHits() == 0)
+
+                                    Facet sourceFacet = null;
+                                    for (Facet facet : searchResult.getFacets()) {
+                                        if (facet.getField().equalsIgnoreCase("source")) {
+                                            sourceFacet = facet;
+                                            break;
+                                        }
+                                    }
+
+                                    if (sourceFacet != null) {
+                                        for (Value sourceValue : sourceFacet.getValues()) {
+                                            if (!connectors.contains(sourceValue.getLabel().toLowerCase())
+                                                    && sourceValue.getCount() == 0) {
+                                                connectors.add(sourceValue.getLabel().toLowerCase());
+                                            }
+                                        }
+                                    }
+
+                                    if (connectors.size() > 0 && !connectors.contains(connector.getSourceName().toLowerCase()))
                                         continue;
 
                                     FetchMetadataTask task = new FetchMetadataTask(storeRESTClient,
@@ -147,9 +167,12 @@ public class CorpusBuilderExecutionQueueConsumer {
 
 //                                corpusBuilderInfoModel.setStatus(CorpusStatus.CREATED.toString());
                                 corpusBuilderInfoDao.update(corpusBuilderInfoModel.getId(), "status", CorpusStatus.CREATED);
-                                text = "Corpus building with ID " + corpusId + " has been created at archive with ID " + corpusBuilderInfoModel.getArchiveId();
+                                text = "Corpus building with ID " + corpusId + " has finished!\n"+
+                                        "Your corpus been created and you can access it at "+
+                                        registryHost + "/request/corpus/download?archiveId=" + corpusBuilderInfoModel.getArchiveId();
                             } else {
-                                text = "Corpus building with corpusId " + corpusId + " has been interrupted!";
+                                text = "Something went wrong and your corpus building with corpusId " + corpusId + " has been interrupted!\n";
+
                                 corpusBuilderInfoDao.updateStatus(corpusBuilderInfoModel.getId(), CorpusStatus.CANCELED);
                             }
                             if (!corpus.getCorpusInfo().getContactInfo().getContactEmail().isEmpty()) {
@@ -157,6 +180,7 @@ public class CorpusBuilderExecutionQueueConsumer {
                                 emailMessage.setRecipient(corpus.getCorpusInfo().getContactInfo().getContactEmail());
                                 emailMessage.setSubject("OpenMinTeD Corpus build request");
                                 emailMessage.setText(text);
+
 
                                 producer.sendMessage(emailMessage);
                             }
