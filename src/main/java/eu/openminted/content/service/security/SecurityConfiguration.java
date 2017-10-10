@@ -1,5 +1,7 @@
 package eu.openminted.content.service.security;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.session.web.http.CookieSerializer;
@@ -7,6 +9,8 @@ import org.springframework.session.web.http.DefaultCookieSerializer;
 
 @Configuration
 public class SecurityConfiguration {
+    private static Logger log = LoggerFactory.getLogger(SecurityConfiguration.class);
+
     @Bean
     public CookieSerializer cookieSerializer() {
 
@@ -17,7 +21,7 @@ public class SecurityConfiguration {
             // serializer.setDomainNamePattern("^.+?\\.(\\w+\\.[a-z]+)$"); // <3>
             return serializer;
         } catch (Exception e) {
-            System.out.println("\n\n\n\n aleko " + e);
+            log.error("Error in SecurityConfiguration: ", e);
         }
         return null;
     }

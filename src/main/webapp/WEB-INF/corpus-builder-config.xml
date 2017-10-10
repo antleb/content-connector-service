@@ -19,13 +19,13 @@
         http://www.springframework.org/schema/util/spring-util-4.1.xsd">
 
     <bean id="placeholderConfig" class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
-        <property name="ignoreUnresolvablePlaceholders" value="true"/>
         <property name="locations">
             <list>
-                <value>classpath*:/application.properties</value>
-                <!--<value>classpath*:/${override-name}-override.properties</value>-->
+                <value>classpath*:/application*${spring.profiles.active}.properties</value>
             </list>
         </property>
+        <property name="ignoreUnresolvablePlaceholders" value="true"/>
+        <property name="ignoreResourceNotFound" value="true"/>
     </bean>
 
     <bean id="workQueue" class="java.util.concurrent.LinkedBlockingQueue"/>

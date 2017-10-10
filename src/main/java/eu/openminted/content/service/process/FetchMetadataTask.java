@@ -9,6 +9,7 @@ import eu.openminted.content.service.messages.JMSProducer;
 import eu.openminted.content.service.model.CorpusBuilderInfoModel;
 import eu.openminted.corpus.CorpusBuildingState;
 import eu.openminted.corpus.CorpusStatus;
+import eu.openminted.registry.domain.MimeTypeEnum;
 import eu.openminted.store.restclient.StoreRESTClient;
 import org.apache.commons.io.IOUtils;
 import org.apache.log4j.Logger;
@@ -89,7 +90,7 @@ public class FetchMetadataTask implements Runnable {
         File archive = new File(archivePath);
         if (archive.mkdirs()) log.debug("Creating " + archivePath + " directory");
         File metadataFile = new File(archive.getPath() + "/" + archiveId + ".xml");
-        File downloadFile = new File(archive.getPath() + "/" + archiveId + ".pdf");
+        File downloadFile = new File(archive.getPath() + "/" + archiveId);
         File abstractFile = new File(archive.getPath() + "/" + archiveId + ".txt");
         Map<String, List<String>> identifiers = new HashMap<>();
 
@@ -181,21 +182,26 @@ public class FetchMetadataTask implements Runnable {
                         continue;
                     } else {
                         // Find hashkeys from imported node
-                        XPathExpression distributionListExpression = xpath.compile("document/publication/distributions/documentDistributionInfo/hashkey");
-                        NodeList hashkeys = (NodeList) distributionListExpression.evaluate(imported, XPathConstants.NODESET);
+                        XPathExpression distributionListExpression = xpath.compile("document/publication/distributions/documentDistributionInfo");
+                        NodeList documentDistributionInfos = (NodeList) distributionListExpression.evaluate(imported, XPathConstants.NODESET);
 
                         boolean hasFulltext = false;
 
-                        if (hashkeys != null && hashkeys.getLength() > 0) {
-                            for (int j = 0; j < hashkeys.getLength(); j++) {
-                                Node hashkey = hashkeys.item(j);
-                                if (hashkey != null) {
-                                    hasFulltext = true;
+                        if (documentDistributionInfos != null && documentDistributionInfos.getLength() > 0) {
+                            for (int j = 0; j < documentDistributionInfos.getLength(); j++) {
 
+                                Node documentDistributionInfo = documentDistributionInfos.item(j);
+                                XPathExpression hashkeyExpression = xpath.compile("hashkey");
+                                XPathExpression mimetypeExpression = xpath.compile("dataFormatInfo/mimeType");
+                                Node hashkey = (Node) hashkeyExpression.evaluate(documentDistributionInfo, XPathConstants.NODE);
+                                Node mimetype = (Node) mimetypeExpression.evaluate(documentDistributionInfo, XPathConstants.NODE);
+
+                                if (hashkey != null && mimetype != null) {
+                                    hasFulltext = true;
                                     if (!identifiers.keySet().contains(identifier))
                                         identifiers.put(identifier, new ArrayList<>());
 
-                                    identifiers.get(identifier).add(hashkey.getTextContent());
+                                    identifiers.get(identifier).add(hashkey.getTextContent() + "@" + mimetype.getTextContent());
                                     totalFulltext++;
                                 }
                             }
@@ -256,15 +262,84 @@ public class FetchMetadataTask implements Runnable {
                 for (String identifier : identifiers.keySet()) {
                     if (isInterrupted) break;
                     if (identifiers.get(identifier).size() > 0) {
-                        for (String hashKey : identifiers.get(identifier)) {
-                            if (hashKey != null && !hashKey.isEmpty()) {
+                        for (String documentInfo : identifiers.get(identifier)) {
+                            if (documentInfo != null && !documentInfo.isEmpty()) {
+
+                                String[] infos = documentInfo.split("@");
+                                String hashKey = infos[0];
+                                String mimetype = infos[1];
+
                                 InputStream fullTextInputStream = cacheClient.getDocument(connector, identifier, hashKey);
                                 FileOutputStream outputStream = null;
                                 if (fullTextInputStream != null) {
-
                                     outputStream = new FileOutputStream(downloadFile, false);
                                     IOUtils.copy(fullTextInputStream, outputStream);
-                                    storeRESTClient.storeFile(downloadFile, archiveId + "/fulltext", identifier + ".pdf");
+
+                                    MimeTypeEnum mimeTypeEnum;
+                                    try {
+                                        mimeTypeEnum = MimeTypeEnum.fromValue(mimetype);
+                                    } catch (IllegalArgumentException e) {
+                                        mimeTypeEnum = null;
+                                    }
+
+                                    if (mimeTypeEnum != null) {
+                                        switch (mimeTypeEnum) {
+                                            case TEXT_CSV:
+                                                mimetype = "csv";
+                                                break;
+                                            case APPLICATION_PLS_XML:
+                                            case APPLICATION_RDF_XML:
+                                            case APPLICATION_TEI_XML:
+                                            case APPLICATION_EMMA_XML:
+                                            case APPLICATION_XHTML_XML:
+                                            case APPLICATION_X_XCES_XML:
+                                            case APPLICATION_VND_XMI_XML:
+                                            case TEXT_XML:
+                                                mimetype = "xml";
+                                                break;
+                                            case TEXT_HTML:
+                                                mimetype = "html";
+                                                break;
+                                            case TEXT_PLAIN:
+                                                mimetype = "txt";
+                                                break;
+                                            case APPLICATION_PDF:
+                                                mimetype = "pdf";
+                                                break;
+                                            case APPLICATION_MSWORD:
+                                                mimetype = "doc";
+                                                break;
+                                            case APPLICATION_VND_MS_EXCEL:
+                                                mimetype = "xls";
+                                                break;
+                                            case APPLICATION_POSTSCRIPT:
+                                                mimetype = "ps";
+                                                break;
+                                            case APPLICATION_RTF:
+                                                mimetype = "rtf";
+                                                break;
+                                            case APPLICATION_X_LATEX:
+                                            case APPLICATION_X_TEX:
+                                                mimetype = "tex";
+                                                break;
+                                            case APPLICATION_JSON_LD:
+                                                mimetype = "json";
+                                                break;
+                                            case APPLICATION_X_MSACCESS:
+                                                mimetype = "mdb";
+                                                break;
+                                            case TEXT_TAB_SEPARATED_VALUES:
+                                                mimetype = "json";
+                                                break;
+                                            default:
+                                                mimetype = "pdf";
+                                                break;
+                                        }
+                                    } else {
+                                        mimetype = "pdf";
+                                    }
+
+                                    storeRESTClient.storeFile(downloadFile, archiveId + "/fulltext", identifier + "." + mimetype);
                                     fulltextProgress++;
                                     corpusBuildingState.setFulltextProgress(fulltextProgress);
                                     if (totalFulltext > 0 && fulltextProgress % 10 == 0) {

@@ -320,7 +320,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             DistributionLoc distributionLoc = new DistributionLoc();
             distributionLoc.setDistributionMedium(DistributionMediumEnum.DOWNLOADABLE);
 
-            distributionLoc.setDistributionLocation(registryHost + "/request/corpus/download?archiveId=" + archiveID);
+            distributionLoc.setDistributionLocation(registryHost + "/api/request/corpus/download?archiveId=" + archiveID);
             datasetDistributionInfo.getDistributionLoc().add(distributionLoc);
 
             distributionInfos.add(datasetDistributionInfo);

@@ -25,10 +25,10 @@ public class CacheClientImpl implements CacheClient {
     private String storeRestClientEndpoint;
 
     @org.springframework.beans.factory.annotation.Value("${cache.buckets.count}")
-    private String cacheBucketCount;
+    private Integer cacheBucketCount;
 
     @org.springframework.beans.factory.annotation.Value("${cache.overwrite}")
-    private String cacheOverwite;
+    private Boolean cacheOverwite;
 
     private Cache myCache;
     private CacheDataID cacheDataIDProvider;
@@ -37,13 +37,8 @@ public class CacheClientImpl implements CacheClient {
     public void init() {
         // Define cache properties
         CacheProperties cacheProperties = new CacheProperties();
-
-        // properties in application.properties are strings, so they need to be converted
-        Integer bucketsCount = Integer.parseInt(cacheBucketCount);
-        boolean overwrite = Boolean.parseBoolean(cacheOverwite);
-        cacheProperties.setBuckets(bucketsCount);
-        cacheProperties.setOverwrite(overwrite);
-
+        cacheProperties.setBuckets(cacheBucketCount);
+        cacheProperties.setOverwrite(cacheOverwite);
         cacheProperties.setCacheID(cacheId);
         cacheProperties.setRestEndpoint(storeRestClientEndpoint);
         cacheProperties.setType(CacheOMTDStoreImpl.class.getName());
