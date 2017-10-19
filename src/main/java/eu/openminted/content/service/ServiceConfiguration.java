@@ -1,6 +1,7 @@
 package eu.openminted.content.service;
 
 import org.apache.activemq.ActiveMQConnectionFactory;
+import org.apache.commons.dbcp2.BasicDataSource;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,6 +12,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jms.annotation.EnableJms;
 import org.springframework.jms.config.DefaultJmsListenerContainerFactory;
 import org.springframework.jms.core.JmsTemplate;
@@ -19,6 +21,7 @@ import org.springframework.jms.support.converter.MessageConverter;
 import org.springframework.jms.support.converter.MessageType;
 import org.springframework.security.access.method.P;
 
+import javax.sql.DataSource;
 import java.io.IOException;
 
 @Configuration
@@ -65,5 +68,21 @@ public class ServiceConfiguration {
         factory.setPubSubDomain(false);
         factory.setMessageConverter(jacksonJmsMessageConverter());
         return factory;
+    }
+
+
+    @Bean
+    public DataSource dbcpDataSource() {
+        BasicDataSource basicDataSource = new BasicDataSource();
+        basicDataSource.setDriverClassName("org.postgresql.Driver");
+        basicDataSource.setUrl("jdbc:postgresql://83.212.101.85:5432/corpusbuilder");
+        basicDataSource.setUsername("vrasidas");
+        basicDataSource.setPassword("paparia");
+        return basicDataSource;
+    }
+
+    @Bean
+    public NamedParameterJdbcTemplate jdbcTemplate() {
+        return new NamedParameterJdbcTemplate(dbcpDataSource());
     }
 }

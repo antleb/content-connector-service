@@ -37,16 +37,22 @@ public class CorpusBuilderInfoDaoImpl implements CorpusBuilderInfoDao {
         return this.jdbcTemplate.query(sql, new BeanPropertyRowMapper<>(CorpusBuilderInfoModel.class));
     }
 
+    public List<CorpusBuilderInfoModel> findAllUnfinished() {
+        String sql = "SELECT * FROM corpusbuilderinfo WHERE corpusbuilderinfo.status = 'SUBMITTED' or corpusbuilderinfo.status = 'INITIATING' or  corpusbuilderinfo.status like 'PROCESSING%' ;";
+        return this.jdbcTemplate.query(sql, new BeanPropertyRowMapper<>(CorpusBuilderInfoModel.class));
+    }
+
     @Override
-    public void insert(String id, String token, String query, CorpusStatus status, String archiveId) {
+    public void insert(String id, String token, String query, String corpusMetadata, CorpusStatus status, String archiveId) {
         Map<String, Object> params = new HashMap<>();
         params.put("id", id);
         params.put("token", token);
         params.put("query", query);
+        params.put("corpus", corpusMetadata);
         params.put("status", status.toString());
         params.put("archiveId", archiveId);
 
-        this.jdbcTemplate.update("insert into corpusbuilderinfo values (:id, :token, :query, :status, :archiveId);", params);
+        this.jdbcTemplate.update("insert into corpusbuilderinfo values (:id, :token, :query, :corpus, :status, :archiveId);", params);
     }
 
     @Override

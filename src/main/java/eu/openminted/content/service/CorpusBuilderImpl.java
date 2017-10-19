@@ -46,7 +46,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
     private static Logger log = Logger.getLogger(CorpusBuilderImpl.class.getName());
 
     @Autowired
-    private OMTDFacetLabels omtdFacetInitializer;
+    private OMTDFacetLabels omtdFacetLabels;
 
     @Autowired(required = false)
     private List<ContentConnector> contentConnectors;
@@ -81,6 +81,12 @@ public class CorpusBuilderImpl implements CorpusBuilder {
     @org.springframework.beans.factory.annotation.Value("${registry.host}")
     private String registryHost;
 
+    @org.springframework.beans.factory.annotation.Value("${authentication.token.name:omtd-user}")
+    private String tokenName;
+
+    @org.springframework.beans.factory.annotation.Value("${authentication.token.email:openminted@gmail.com}")
+    private String tokenEmail;
+
     private BlockingQueue<Corpus> corpora = new LinkedBlockingQueue<>();
 
     /**
@@ -91,10 +97,30 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         new Thread(() -> {
             try {
                 corpusBuilderExecutionQueueConsumer.init(corpora);
+
             } catch (Exception ex) {
                 log.error("Error executing queue consumer");
             }
         }).start();
+
+        log.info("Start looking for models in database");
+        List<CorpusBuilderInfoModel> corpusBuilderInfoModels = corpusBuilderInfoDao.findAllUnfinished();
+        if (corpusBuilderInfoModels != null && corpusBuilderInfoModels.size() > 0) {
+            for (CorpusBuilderInfoModel model : corpusBuilderInfoModels) {
+                try {
+                    log.info(model);
+                    buildCorpusPerModel(model);
+                } catch (Exception e) {
+                    log.error("Error updating corpora. Skipping model " + model.toString(), e);
+                }
+            }
+        }
+    }
+
+    private void buildCorpusPerModel(CorpusBuilderInfoModel model) throws IOException {
+        ObjectMapper mapper = new ObjectMapper();
+        Corpus corpus = mapper.readValue(model.getCorpus(), Corpus.class);
+        buildCorpus(corpus, model.getToken());
     }
 
     /**
@@ -129,40 +155,21 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         identificationInfo.setResourceNames(new ArrayList<>());
 
         // metadataHeaderInfo elements
-        MetadataIdentifier metadataIdentifier = new MetadataIdentifier();
-
-        metadataIdentifier.setValue(createCorpusId());
-        metadataIdentifier.setMetadataIdentifierSchemeName(MetadataIdentifierSchemeNameEnum.OTHER);
-        metadataHeaderInfo.setMetadataRecordIdentifier(metadataIdentifier);
+        MetadataIdentifier metadataIdentifier = createMetadataIdentifier(metadataHeaderInfo);
 
         metadataHeaderInfo.setUserQuery(tempQuery.getKeyword());
         corpusInfo.setDistributionInfos(new ArrayList<>());
 
-        Facet sourceFacet = new Facet();
+        // prepare facets
         SearchResult result = new SearchResult();
         result.setFacets(new ArrayList<>());
-        sourceFacet.setField(OMTDFacetEnum.SOURCE.value());
-        sourceFacet.setLabel(omtdFacetInitializer.getOmtdFacetLabels().get(OMTDFacetEnum.SOURCE));
-        sourceFacet.setValues(new ArrayList<>());
+        Facet sourceFacet = createSourceFacet();
 
         // retrieve connectors from query
-        List<String> connectors = new ArrayList<>();
-        if (query.getParams().containsKey(OMTDFacetEnum.SOURCE.value())
-                && query.getParams().get(OMTDFacetEnum.SOURCE.value()) != null
-                && query.getParams().get(OMTDFacetEnum.SOURCE.value()).size() > 0) {
-            connectors.addAll(query.getParams().get(OMTDFacetEnum.SOURCE.value()));
-        }
+        List<String> connectors = createListOfConnectors(query);
 
         if (contentConnectors != null) {
-
-            if (!tempQuery.getFacets().contains(OMTDFacetEnum.PUBLICATION_TYPE.value()))
-                tempQuery.getFacets().add(OMTDFacetEnum.PUBLICATION_TYPE.value());
-            if (!tempQuery.getFacets().contains(OMTDFacetEnum.PUBLICATION_YEAR.value()))
-                tempQuery.getFacets().add(OMTDFacetEnum.PUBLICATION_YEAR.value());
-            if (!tempQuery.getFacets().contains(OMTDFacetEnum.RIGHTS.value()))
-                tempQuery.getFacets().add(OMTDFacetEnum.RIGHTS.value());
-            if (!tempQuery.getFacets().contains(OMTDFacetEnum.DOCUMENT_LANG.value()))
-                tempQuery.getFacets().add(OMTDFacetEnum.DOCUMENT_LANG.value());
+            updateFacets(tempQuery);
 
             for (ContentConnector connector : contentConnectors) {
                 if (connectors.size() > 0 && !connectors.contains(connector.getSourceName())) continue;
@@ -178,10 +185,9 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                 merge(result, res);
 
                 // Remove values with count 0 and set labels to facets
-                result.getFacets().forEach(facet-> {
+                result.getFacets().forEach(facet -> {
                     List<Value> valuesToRemove = new ArrayList<>();
                     facet.getValues().forEach(value1 -> {
-
                         if (value1.getCount() == 0) valuesToRemove.add(value1);
                     });
 
@@ -191,7 +197,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
                     OMTDFacetEnum facetEnum = OMTDFacetEnum.fromValue(facet.getField());
                     if (facetEnum != null)
-                        facet.setLabel(omtdFacetInitializer.getOmtdFacetLabels().get(facetEnum));
+                        facet.setLabel(omtdFacetLabels.getFacetLabelsFromEnum(facetEnum));
                 });
 
                 sourcesBuilder.append(connector.getSourceName()).append(" and ");
@@ -216,84 +222,12 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         for (Facet facet : result.getFacets()) {
             // language
             if (facet.getField().equalsIgnoreCase(OMTDFacetEnum.DOCUMENT_LANG.value())) {
-                CorpusTextPartInfo corpusTextPartInfo = new CorpusTextPartInfo();
-                CorpusMediaPartsType corpusMediaPartsType = new CorpusMediaPartsType();
-                RawCorpusInfo rawCorpusInfo = new RawCorpusInfo();
-                CorpusSubtypeSpecificInfo corpusSubtypeSpecificInfo = new CorpusSubtypeSpecificInfo();
-
-                rawCorpusInfo.setCorpusMediaPartsType(corpusMediaPartsType);
-                corpusSubtypeSpecificInfo.setRawCorpusInfo(rawCorpusInfo);
-                corpusInfo.setCorpusSubtypeSpecificInfo(corpusSubtypeSpecificInfo);
-
-                corpusInfo.getCorpusSubtypeSpecificInfo().getRawCorpusInfo().getCorpusMediaPartsType().getCorpusTextParts().add(corpusTextPartInfo);
-
-                Description description = new Description();
-                description.setLang("en");
-                String currentDescription = descriptionString;
-                int publicationsCounter = 0;
-                int languagesCounter = 0;
-                currentDescription = currentDescription.replaceAll("\\[creation_date\\]", new java.util.Date().toString());
-                currentDescription = currentDescription.replaceAll("\\[source\\]", sourcesBuilder.toString());
-
-                for (Value value : facet.getValues()) {
-                    if (value.getCount() > 0) {
-                        languagesCounter++;
-                        publicationsCounter += value.getCount();
-
-                        Language language = new Language();
-                        LanguageInfo languageInfo = new LanguageInfo();
-
-                        language.setLanguageTag(value.getLabel());
-                        language.setLanguageId(value.getValue());
-                        languageInfo.setLanguage(language);
-
-                        SizeInfo languageSizeInfo = new SizeInfo();
-                        languageSizeInfo.setSize(String.valueOf(value.getCount()));
-                        languageSizeInfo.setSizeUnit(SizeUnitEnum.TEXTS);
-                        languageInfo.setSizePerLanguage(languageSizeInfo);
-
-                        corpusTextPartInfo.getLanguages().add(languageInfo);
-                    }
-                }
-
-                currentDescription = currentDescription.replaceAll("\\[number_of\\]", "" + publicationsCounter);
-                currentDescription = currentDescription.replaceAll("\\[language\\]", languagesCounter + " languages");
-
-                description.setValue(currentDescription);
-                corpusInfo.getIdentificationInfo().getDescriptions().add(description);
-
-                LingualityInfo lingualityInfo = new LingualityInfo();
-
-                if (languagesCounter == 1) {
-                    lingualityInfo.setLingualityType(LingualityTypeEnum.MONOLINGUAL);
-                } else if (languagesCounter == 2) {
-                    lingualityInfo.setLingualityType(LingualityTypeEnum.BILINGUAL);
-                } else if (languagesCounter > 2) {
-                    lingualityInfo.setLingualityType(LingualityTypeEnum.MULTILINGUAL);
-                } else {
-                    lingualityInfo.setLingualityType(LingualityTypeEnum.MONOLINGUAL);
-                }
-
-                corpusTextPartInfo.setLingualityInfo(lingualityInfo);
-
-                SizeInfo sizeInfo = new SizeInfo();
-                sizeInfo.setSize(String.valueOf(result.getTotalHits()));
-                sizeInfo.setSizeUnit(SizeUnitEnum.TEXTS);
-                corpusTextPartInfo.getSizes().add(sizeInfo);
+                addCorpusLanguageFields(facet, corpusInfo, descriptionString, sourcesBuilder, result);
             }
 
             // licence
             if (facet.getField().equalsIgnoreCase(OMTDFacetEnum.RIGHTS.value())) {
-                for (Value value : facet.getValues()) {
-                    if (value.getCount() > 0) {
-                        DatasetDistributionInfo datasetDistributionInfo = new DatasetDistributionInfo();
-                        RightsInfo rightsInfo = createRightsInfo(value);
-                        datasetDistributionInfo.setRightsInfo(rightsInfo);
-                        SizeInfo sizeInfo = createSizeInfo(value);
-                        datasetDistributionInfo.getSizes().add(sizeInfo);
-                        corpusInfo.getDistributionInfos().add(datasetDistributionInfo);
-                    }
-                }
+                addCorpusLicenceFields(facet, corpusInfo);
             }
         }
 
@@ -331,13 +265,134 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
             try {
                 OIDCAuthenticationToken authentication = (OIDCAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
-                corpusBuilderInfoDao.insert(metadataIdentifier.getValue(), authentication.getSub(), queryString, CorpusStatus.INITIATING, archiveID);
+                populateCorpus(corpusMetadata);
+                ObjectMapper objectMapper = new ObjectMapper();
+                String corpus = objectMapper.writeValueAsString(corpusMetadata);
+                log.info(corpus);
+                corpusBuilderInfoDao.insert(metadataIdentifier.getValue(), authentication.getSub(), queryString, corpus, CorpusStatus.INITIATING, archiveID);
             } catch (ClassCastException e) {
                 log.error("User is not authenticated to build corpus", e);
+            } catch (JsonProcessingException e) {
+                log.error("Corpus metadata cannot be written as string", e);
             }
         }
 
         return corpusMetadata;
+    }
+
+    private void addCorpusLanguageFields(Facet facet,
+                                         CorpusInfo corpusInfo,
+                                         String descriptionString,
+                                         StringBuilder sourcesBuilder,
+                                         SearchResult result) {
+        CorpusTextPartInfo corpusTextPartInfo = new CorpusTextPartInfo();
+        CorpusMediaPartsType corpusMediaPartsType = new CorpusMediaPartsType();
+        RawCorpusInfo rawCorpusInfo = new RawCorpusInfo();
+        CorpusSubtypeSpecificInfo corpusSubtypeSpecificInfo = new CorpusSubtypeSpecificInfo();
+
+        rawCorpusInfo.setCorpusMediaPartsType(corpusMediaPartsType);
+        corpusSubtypeSpecificInfo.setRawCorpusInfo(rawCorpusInfo);
+        corpusInfo.setCorpusSubtypeSpecificInfo(corpusSubtypeSpecificInfo);
+
+        corpusInfo.getCorpusSubtypeSpecificInfo().getRawCorpusInfo().getCorpusMediaPartsType().getCorpusTextParts().add(corpusTextPartInfo);
+
+        Description description = new Description();
+        description.setLang("en");
+        String currentDescription = descriptionString;
+        int publicationsCounter = 0;
+        int languagesCounter = 0;
+        currentDescription = currentDescription.replaceAll("\\[creation_date\\]", new java.util.Date().toString());
+        currentDescription = currentDescription.replaceAll("\\[source\\]", sourcesBuilder.toString());
+
+        for (Value value : facet.getValues()) {
+            if (value.getCount() > 0) {
+                languagesCounter++;
+                publicationsCounter += value.getCount();
+
+                Language language = new Language();
+                LanguageInfo languageInfo = new LanguageInfo();
+
+                language.setLanguageTag(value.getLabel());
+                language.setLanguageId(value.getValue());
+                languageInfo.setLanguage(language);
+
+                SizeInfo languageSizeInfo = new SizeInfo();
+                languageSizeInfo.setSize(String.valueOf(value.getCount()));
+                languageSizeInfo.setSizeUnit(SizeUnitEnum.TEXTS);
+                languageInfo.setSizePerLanguage(languageSizeInfo);
+
+                corpusTextPartInfo.getLanguages().add(languageInfo);
+            }
+        }
+
+        currentDescription = currentDescription.replaceAll("\\[number_of\\]", "" + publicationsCounter);
+        currentDescription = currentDescription.replaceAll("\\[language\\]", languagesCounter + " languages");
+
+        description.setValue(currentDescription);
+        corpusInfo.getIdentificationInfo().getDescriptions().add(description);
+
+        LingualityInfo lingualityInfo = new LingualityInfo();
+
+        if (languagesCounter == 1) {
+            lingualityInfo.setLingualityType(LingualityTypeEnum.MONOLINGUAL);
+        } else if (languagesCounter == 2) {
+            lingualityInfo.setLingualityType(LingualityTypeEnum.BILINGUAL);
+        } else if (languagesCounter > 2) {
+            lingualityInfo.setLingualityType(LingualityTypeEnum.MULTILINGUAL);
+        } else {
+            lingualityInfo.setLingualityType(LingualityTypeEnum.MONOLINGUAL);
+        }
+
+        corpusTextPartInfo.setLingualityInfo(lingualityInfo);
+
+        SizeInfo sizeInfo = new SizeInfo();
+        sizeInfo.setSize(String.valueOf(result.getTotalHits()));
+        sizeInfo.setSizeUnit(SizeUnitEnum.TEXTS);
+        corpusTextPartInfo.getSizes().add(sizeInfo);
+    }
+
+    private void addCorpusLicenceFields(Facet facet, CorpusInfo corpusInfo) {
+        for (Value value : facet.getValues()) {
+            if (value.getCount() > 0) {
+                DatasetDistributionInfo datasetDistributionInfo = new DatasetDistributionInfo();
+                RightsInfo rightsInfo = createRightsInfo(value);
+                datasetDistributionInfo.setRightsInfo(rightsInfo);
+                SizeInfo sizeInfo = createSizeInfo(value);
+                datasetDistributionInfo.getSizes().add(sizeInfo);
+                corpusInfo.getDistributionInfos().add(datasetDistributionInfo);
+            }
+        }
+    }
+
+    private void updateFacets(Query tempQuery) {
+        if (!tempQuery.getFacets().contains(OMTDFacetEnum.PUBLICATION_TYPE.value()))
+            tempQuery.getFacets().add(OMTDFacetEnum.PUBLICATION_TYPE.value());
+        if (!tempQuery.getFacets().contains(OMTDFacetEnum.PUBLICATION_YEAR.value()))
+            tempQuery.getFacets().add(OMTDFacetEnum.PUBLICATION_YEAR.value());
+        if (!tempQuery.getFacets().contains(OMTDFacetEnum.RIGHTS.value()))
+            tempQuery.getFacets().add(OMTDFacetEnum.RIGHTS.value());
+        if (!tempQuery.getFacets().contains(OMTDFacetEnum.DOCUMENT_LANG.value()))
+            tempQuery.getFacets().add(OMTDFacetEnum.DOCUMENT_LANG.value());
+        if (!tempQuery.getFacets().contains(OMTDFacetEnum.DOCUMENT_TYPE.value()))
+            tempQuery.getFacets().add(OMTDFacetEnum.DOCUMENT_TYPE.value());
+    }
+
+    private List<String> createListOfConnectors(Query query) {
+        List<String> connectors = new ArrayList<>();
+        if (query.getParams().containsKey(OMTDFacetEnum.SOURCE.value())
+                && query.getParams().get(OMTDFacetEnum.SOURCE.value()) != null
+                && query.getParams().get(OMTDFacetEnum.SOURCE.value()).size() > 0) {
+            connectors.addAll(query.getParams().get(OMTDFacetEnum.SOURCE.value()));
+        }
+        return connectors;
+    }
+
+    private Facet createSourceFacet() {
+        Facet sourceFacet = new Facet();
+        sourceFacet.setField(OMTDFacetEnum.SOURCE.value());
+        sourceFacet.setLabel(omtdFacetLabels.getFacetLabelsFromEnum(OMTDFacetEnum.SOURCE));
+        sourceFacet.setValues(new ArrayList<>());
+        return sourceFacet;
     }
 
     /**
@@ -350,32 +405,28 @@ public class CorpusBuilderImpl implements CorpusBuilder {
      */
     @Override
     public void buildCorpus(Corpus corpusMetadata) {
-        String authenticationSub = "";
+        String authenticationSub;
         try {
             OIDCAuthenticationToken authentication = (OIDCAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
             authenticationSub = authentication.getSub();
             if (authenticationSub != null || !authenticationSub.isEmpty()) {
-                String corpusId = corpusMetadata.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue();
-                if (contentConnectors != null) {
-                    corpora.add(corpusMetadata);
-                    corpusBuilderInfoDao.updateStatus(corpusId, CorpusStatus.SUBMITTED);
-                    CorpusBuilderInfoModel corpusBuilderInfoModel = corpusBuilderInfoDao.find(corpusId);
-                    Query query = new ObjectMapper().readValue(corpusBuilderInfoModel.getQuery(), Query.class);
+                startBuildingCorpus(corpusMetadata, authenticationSub);
+            } else {
+                log.error("User is not authenticated to build corpus");
+            }
 
-                    for (ContentConnector connector : contentConnectors) {
-                        SearchResult searchResult = connector.search(query);
-                        if (searchResult.getTotalHits() == 0)
-                            continue;
+        } catch (ClassCastException e) {
+            log.error("User is not authenticated to build corpus", e);
+        } catch (IOException e) {
+            log.error("IO error while initiating corpus building", e);
+        }
+    }
 
-                        CorpusBuildingState corpusBuildingState = new CorpusBuildingState();
-                        corpusBuildingState.setId(corpusId + "@" + connector.getSourceName());
-                        corpusBuildingState.setToken(authenticationSub);
-                        corpusBuildingState.setCurrentStatus(CorpusStatus.SUBMITTED.toString());
-                        corpusBuildingState.setConnector(connector.getSourceName());
-                        corpusBuildingState.setTotalHits(corpusMetadata.getCorpusInfo().getCorpusSubtypeSpecificInfo().getRawCorpusInfo().getCorpusMediaPartsType().getCorpusTextParts().size());
-                        producer.sendMessage(corpusBuildingState);
-                    }
-                }
+
+    private void buildCorpus(Corpus corpusMetadata, String authenticationSub) {
+        try {
+            if (authenticationSub != null || !authenticationSub.isEmpty()) {
+                startBuildingCorpus(corpusMetadata, authenticationSub);
             } else {
                 log.error("User is not authenticated to build corpus");
             }
@@ -470,7 +521,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         rightsInfo.setLicenceInfos(new ArrayList<>());
         rightsInfo.getLicenceInfos().add(licenceInfos);
         rightsInfo.setRightsStatement(new ArrayList<>());
-        rightsInfo.getRightsStatement().add(omtdFacetInitializer.getOmtdGetRightsStmtEnumFromLabel().get(value.getValue()));
+        rightsInfo.getRightsStatement().add(omtdFacetLabels.getRightsStmtEnumFromLabel().get(value.getValue()));
         return rightsInfo;
     }
 
@@ -479,5 +530,107 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         sizeInfo.setSize(String.valueOf(value.getCount()));
         sizeInfo.setSizeUnit(SizeUnitEnum.TEXTS);
         return sizeInfo;
+    }
+
+    private void startBuildingCorpus(Corpus corpusMetadata, String authenticationSub) throws IOException {
+        String corpusId = corpusMetadata.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue();
+        if (contentConnectors != null) {
+            corpora.add(corpusMetadata);
+            corpusBuilderInfoDao.updateStatus(corpusId, CorpusStatus.SUBMITTED);
+            CorpusBuilderInfoModel corpusBuilderInfoModel = corpusBuilderInfoDao.find(corpusId);
+            Query query = new ObjectMapper().readValue(corpusBuilderInfoModel.getQuery(), Query.class);
+
+            for (ContentConnector connector : contentConnectors) {
+                SearchResult searchResult = connector.search(query);
+                if (searchResult.getTotalHits() == 0)
+                    continue;
+
+                CorpusBuildingState corpusBuildingState = new CorpusBuildingState();
+                corpusBuildingState.setId(corpusId + "@" + connector.getSourceName());
+                corpusBuildingState.setToken(authenticationSub);
+                corpusBuildingState.setCurrentStatus(CorpusStatus.SUBMITTED.toString());
+                corpusBuildingState.setConnector(connector.getSourceName());
+                corpusBuildingState.setTotalHits(corpusMetadata.getCorpusInfo().getCorpusSubtypeSpecificInfo().getRawCorpusInfo().getCorpusMediaPartsType().getCorpusTextParts().size());
+                producer.sendMessage(corpusBuildingState);
+            }
+        }
+    }
+
+    private void populateCorpus(Corpus corpus) {
+        String username = "";
+        ContactInfo contactInfo = new ContactInfo();
+        List<Name> names = new ArrayList<>();
+        List<String> emails = new ArrayList<>();
+        List<PersonInfo> personInfos = new ArrayList<>();
+        CommunicationInfo communicationInfo = new CommunicationInfo();
+
+        PersonInfo personInfo = new PersonInfo();
+
+        if (SecurityContextHolder.getContext() != null && SecurityContextHolder.getContext().getAuthentication() instanceof OIDCAuthenticationToken) {
+            OIDCAuthenticationToken authentication = (OIDCAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+            getNamesFromAuthenticationToken(authentication, names);
+            personInfo.setNames(names);
+
+            emails.add(authentication.getUserInfo().getEmail());
+            communicationInfo.setEmails(emails);
+            personInfo.setCommunicationInfo(communicationInfo);
+            personInfos.add(personInfo);
+
+            contactInfo.setContactEmail(authentication.getUserInfo().getEmail());
+            contactInfo.setContactPersons(personInfos);
+
+            username = authentication.getUserInfo().getName();
+            if (username == null) username = "";
+        } else {
+            log.warn("There is no valid authentication token. Going with default email.");
+            Name name = new Name();
+            name.setValue(tokenName);
+            name.setLang("en");
+
+            names.add(name);
+            personInfo.setNames(names);
+            personInfos.add(personInfo);
+
+            contactInfo.setContactEmail(tokenEmail);
+            contactInfo.setContactPersons(personInfos);
+
+            username = tokenName;
+        }
+        corpus.getCorpusInfo().setContactInfo(contactInfo);
+        for (Description description : corpus.getCorpusInfo().getIdentificationInfo().getDescriptions()) {
+            if (username != null || !username.isEmpty())
+                description.setValue(description.getValue().replaceAll("\\[user_name\\]", username));
+        }
+    }
+
+    private void getNamesFromAuthenticationToken(OIDCAuthenticationToken authentication, List<Name> names) {
+        Name name = new Name();
+        Name familyName = new Name();
+        Name givenName = new Name();
+        Name preferredUsername = new Name();
+
+        name.setValue(authentication.getUserInfo().getName());
+        familyName.setValue(authentication.getUserInfo().getFamilyName());
+        givenName.setValue(authentication.getUserInfo().getGivenName());
+        preferredUsername.setValue(authentication.getUserInfo().getPreferredUsername());
+
+        name.setLang("en");
+        familyName.setLang("en");
+        givenName.setLang("en");
+        preferredUsername.setLang("en");
+
+        names.add(name);
+        names.add(familyName);
+        names.add(givenName);
+        names.add(preferredUsername);
+    }
+
+    private MetadataIdentifier createMetadataIdentifier(MetadataHeaderInfo metadataHeaderInfo) {
+        MetadataIdentifier metadataIdentifier = new MetadataIdentifier();
+
+        metadataIdentifier.setValue(createCorpusId());
+        metadataIdentifier.setMetadataIdentifierSchemeName(MetadataIdentifierSchemeNameEnum.OTHER);
+        metadataHeaderInfo.setMetadataRecordIdentifier(metadataIdentifier);
+        return metadataIdentifier;
     }
 }

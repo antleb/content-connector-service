@@ -7,6 +7,7 @@ public class CorpusBuilderInfoModel {
     private String id;
     private String token;
     private String query;
+    private String corpus;
     private String status;
     private String archiveId;
 
@@ -34,6 +35,14 @@ public class CorpusBuilderInfoModel {
         this.query = query;
     }
 
+    public String getCorpus() {
+        return corpus;
+    }
+
+    public void setCorpus(String corpus) {
+        this.corpus = corpus;
+    }
+
     public String getStatus() {
         return status;
     }
@@ -54,7 +63,9 @@ public class CorpusBuilderInfoModel {
     public String toString() {
         return "CorpusBuilderInfoModel{" +
                 "id='" + id + '\'' +
+                ", token='" + token + '\'' +
                 ", query='" + query + '\'' +
+                ", corpus='" + corpus + '\'' +
                 ", status='" + status + '\'' +
                 ", archiveId='" + archiveId + '\'' +
                 '}';

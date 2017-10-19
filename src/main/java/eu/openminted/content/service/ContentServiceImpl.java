@@ -44,6 +44,7 @@ public class ContentServiceImpl implements ContentService {
         if (!query.getFacets().contains(OMTDFacetEnum.PUBLICATION_YEAR.value())) query.getFacets().add(OMTDFacetEnum.PUBLICATION_YEAR.value());
         if (!query.getFacets().contains(OMTDFacetEnum.RIGHTS.value())) query.getFacets().add(OMTDFacetEnum.RIGHTS.value());
         if (!query.getFacets().contains(OMTDFacetEnum.DOCUMENT_LANG.value())) query.getFacets().add(OMTDFacetEnum.DOCUMENT_LANG.value());
+        if (!query.getFacets().contains(OMTDFacetEnum.DOCUMENT_TYPE.value())) query.getFacets().add(OMTDFacetEnum.DOCUMENT_TYPE.value());
 
         SearchResult result = new SearchResult();
         Facet sourceFacet = new Facet();
@@ -96,7 +97,7 @@ public class ContentServiceImpl implements ContentService {
 
             OMTDFacetEnum facetEnum = OMTDFacetEnum.fromValue(facet.getField());
             if (facetEnum != null)
-                facet.setLabel(omtdFacetInitializer.getOmtdFacetLabels().get(facetEnum));
+                facet.setLabel(omtdFacetInitializer.getFacetLabelsFromEnum(facetEnum));
         });
 
         return result;

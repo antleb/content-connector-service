@@ -10,7 +10,9 @@ public interface CorpusBuilderInfoDao {
 
     List<CorpusBuilderInfoModel> findAll();
 
-    void insert(String id, String token, String query, CorpusStatus status, String archiveId);
+    List<CorpusBuilderInfoModel> findAllUnfinished();
+
+    void insert(String id, String token, String query, String corpusMetadata, CorpusStatus status, String archiveId);
 
     void updateStatus(String id, CorpusStatus status);
 

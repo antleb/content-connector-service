@@ -9,7 +9,11 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.jdbc.datasource.embedded.EmbeddedDatabase;
+import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseBuilder;
+import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseType;
 
+import javax.sql.DataSource;
 import java.io.IOException;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -54,12 +58,28 @@ public class ConnectorServiceTestConfiguration {
     }
 
     @Bean
-    public BasicDataSource dbcpDataSource() {
+    public DataSource dbcpDataSource() {
+
+//        EmbeddedDatabaseBuilder databaseBuilder = new EmbeddedDatabaseBuilder();
+//        EmbeddedDatabase db = databaseBuilder
+//                .setType(EmbeddedDatabaseType.HSQL) //.H2 or .DERBY
+//                .addScript("db/sql/create-db.sql")
+//                .addScript("db/sql/insert-data.sql")
+//                .build();
+//        return db;
+
+//        BasicDataSource basicDataSource = new BasicDataSource();
+//        basicDataSource.setDriverClassName("org.hsqldb.jdbcDriver");
+//        basicDataSource.setUrl("jdbc:hsqldb:mem:corpusDb");
+//        basicDataSource.setUsername("sa");
+//        basicDataSource.setPassword("");
+//        return basicDataSource;
+//
         BasicDataSource basicDataSource = new BasicDataSource();
-        basicDataSource.setDriverClassName("org.hsqldb.jdbcDriver");
-        basicDataSource.setUrl("jdbc:hsqldb:mem:corpusDb");
-        basicDataSource.setUsername("sa");
-        basicDataSource.setPassword("");
+        basicDataSource.setDriverClassName("org.postgresql.Driver");
+        basicDataSource.setUrl("jdbc:postgresql://83.212.101.85:5432/corpusbuilder");
+        basicDataSource.setUsername("vrasidas");
+        basicDataSource.setPassword("paparia");
         return basicDataSource;
     }
 

@@ -8,6 +8,7 @@ import eu.openminted.content.connector.utils.faceting.OMTDFacetLabels;
 import eu.openminted.content.service.OmtdNamespace;
 import eu.openminted.content.service.ServiceConfiguration;
 import eu.openminted.content.service.rest.ContentServiceController;
+import eu.openminted.registry.domain.DocumentTypeEnum;
 import eu.openminted.registry.domain.PublicationTypeEnum;
 import eu.openminted.registry.domain.RightsStatementEnum;
 import org.junit.Before;
@@ -48,7 +49,7 @@ public class FetchMetadataTaskTest {
     private ContentServiceController controller;
 
     @Autowired
-    private OMTDFacetLabels omtdFacetInitializer;
+    private OMTDFacetLabels omtdFacetLabels;
 
     private Query query;
 
@@ -63,8 +64,8 @@ public class FetchMetadataTaskTest {
     @Ignore
     public void testUnwantedValues() {
         query.setParams(new HashMap<>());
-        query.getParams().put("documentlanguage", new ArrayList<>());
-        query.getParams().get("documentlanguage").add("Spanish");
+        query.getParams().put(OMTDFacetEnum.DOCUMENT_LANG.value(), new ArrayList<>());
+        query.getParams().get(OMTDFacetEnum.DOCUMENT_LANG.value()).add("Spanish");
 
         SearchResult searchResult = controller.browse(query);
         if (searchResult != null) {
@@ -78,7 +79,7 @@ public class FetchMetadataTaskTest {
 
         query.setParams(new HashMap<>());
         query.getParams().put(OMTDFacetEnum.PUBLICATION_TYPE.value(), new ArrayList<>());
-        query.getParams().get(OMTDFacetEnum.PUBLICATION_TYPE.value()).add(omtdFacetInitializer.getOmtdPublicationTypeLabels().get(PublicationTypeEnum.RESEARCH_PROPOSAL));
+        query.getParams().get(OMTDFacetEnum.PUBLICATION_TYPE.value()).add(omtdFacetLabels.getPublicationTypeLabelFromEnum(PublicationTypeEnum.RESEARCH_PROPOSAL));
         query.getParams().get(OMTDFacetEnum.PUBLICATION_TYPE.value()).add(PublicationTypeEnum.BACHELOR_THESIS.toString());
 
         SearchResult searchResult = controller.browse(query);
@@ -93,7 +94,7 @@ public class FetchMetadataTaskTest {
 
         query.setParams(new HashMap<>());
         query.getParams().put(OMTDFacetEnum.RIGHTS.value(), new ArrayList<>());
-        query.getParams().get(OMTDFacetEnum.RIGHTS.value()).add(omtdFacetInitializer.getOmtdRightsStmtLabels().get(RightsStatementEnum.OPEN_ACCESS));
+        query.getParams().get(OMTDFacetEnum.RIGHTS.value()).add(omtdFacetLabels.getRightsStmtLabelFromEnum(RightsStatementEnum.OPEN_ACCESS));
         query.getParams().get(OMTDFacetEnum.RIGHTS.value()).add(RightsStatementEnum.RESTRICTED_ACCESS.toString());
 
         SearchResult searchResult = controller.browse(query);
@@ -106,14 +107,17 @@ public class FetchMetadataTaskTest {
     @Ignore
     public void testLanguageValues() {
         query.setParams(new HashMap<>());
-        query.getParams().put("documentlanguage", new ArrayList<>());
-        query.getParams().put("publicationyear", new ArrayList<>());
+        query.getParams().put(OMTDFacetEnum.DOCUMENT_TYPE.value(), new ArrayList<>());
+//        query.getParams().put(OMTDFacetEnum.DOCUMENT_LANG.value(), new ArrayList<>());
+//        query.getParams().put(OMTDFacetEnum.PUBLICATION_YEAR.value(), new ArrayList<>());
 //        query.getParams().get("documentlanguage").add("Greek, Modern (1453-)");
 //        query.getParams().get("documentlanguage").add("Lithuanian");
-        query.getParams().get("documentlanguage").add("grc");
-        query.getParams().get("publicationyear").add("2010");
-        query.getParams().get("publicationyear").add("1528");
-        query.setKeyword("digital");
+//        query.getParams().get(OMTDFacetEnum.DOCUMENT_LANG.value()).add("en");
+        query.getParams().get(OMTDFacetEnum.DOCUMENT_TYPE.value()).add(omtdFacetLabels.getDocumentTypeLabelFromEnum(DocumentTypeEnum.WITH_FULL_TEXT));
+//        query.getParams().get("documenttype").add("fulltext");
+//        query.getParams().get("publicationyear").add("2010");
+//        query.getParams().get("publicationyear").add("1528");
+//        query.setKeyword("digital");
 //        query.getParams().get("documentlanguage").add("Czech");
 //        query.getParams().get("documentlanguage").add("Catalan; Valencian");
 //        query.getParams().get("documentlanguage").add("English, Middle (1100-1500)");
