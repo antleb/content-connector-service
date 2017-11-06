@@ -203,11 +203,17 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                 sourcesBuilder.append(connector.getSourceName()).append(" and ");
             }
             sourcesBuilder = sourcesBuilder.delete(sourcesBuilder.lastIndexOf(" and "), sourcesBuilder.length());
+            String connectorsToString;
 
-            String connectorsToString = contentConnectors.stream()
-                    .map(ContentConnector::getSourceName)
-                    .collect(Collectors.toList()).toString()
-                    .replaceAll("\\[|\\]", "");
+            if (connectors.size() > 0) {
+                connectorsToString = new ArrayList<>(connectors).toString()
+                        .replaceAll("\\[|\\]", "");
+            } else {
+                connectorsToString = contentConnectors.stream()
+                        .map(ContentConnector::getSourceName)
+                        .collect(Collectors.toList()).toString()
+                        .replaceAll("\\[|\\]", "");
+            }
 
             resourceNameUsageDescription = resourceNameUsageDescription.replaceAll("\\[connectors\\]", connectorsToString);
             ResourceName resourceName = new ResourceName();
@@ -270,6 +276,18 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                 String corpus = objectMapper.writeValueAsString(corpusMetadata);
                 log.info(corpus);
                 corpusBuilderInfoDao.insert(metadataIdentifier.getValue(), authentication.getSub(), queryString, corpus, CorpusStatus.INITIATING, archiveID);
+
+                for (ContentConnector connector : contentConnectors) {
+                    if (connectors.size() > 0 && !connectors.contains(connector.getSourceName())) continue;
+
+                    CorpusBuildingState corpusBuildingState = new CorpusBuildingState();
+                    corpusBuildingState.setId(metadataIdentifier.getValue() + "@" + connector.getSourceName());
+                    corpusBuildingState.setToken(authentication.getSub());
+                    corpusBuildingState.setCurrentStatus(CorpusStatus.INITIATING.toString());
+                    corpusBuildingState.setConnector(connector.getSourceName());
+                    corpusBuildingState.setTotalHits(corpusMetadata.getCorpusInfo().getCorpusSubtypeSpecificInfo().getRawCorpusInfo().getCorpusMediaPartsType().getCorpusTextParts().size());
+                    producer.sendMessage(corpusBuildingState);
+                }
             } catch (ClassCastException e) {
                 log.error("User is not authenticated to build corpus", e);
             } catch (JsonProcessingException e) {
@@ -377,16 +395,6 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             tempQuery.getFacets().add(OMTDFacetEnum.DOCUMENT_TYPE.value());
     }
 
-    private List<String> createListOfConnectors(Query query) {
-        List<String> connectors = new ArrayList<>();
-        if (query.getParams().containsKey(OMTDFacetEnum.SOURCE.value())
-                && query.getParams().get(OMTDFacetEnum.SOURCE.value()) != null
-                && query.getParams().get(OMTDFacetEnum.SOURCE.value()).size() > 0) {
-            connectors.addAll(query.getParams().get(OMTDFacetEnum.SOURCE.value()));
-        }
-        return connectors;
-    }
-
     private Facet createSourceFacet() {
         Facet sourceFacet = new Facet();
         sourceFacet.setField(OMTDFacetEnum.SOURCE.value());
@@ -409,7 +417,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         try {
             OIDCAuthenticationToken authentication = (OIDCAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
             authenticationSub = authentication.getSub();
-            if (authenticationSub != null || !authenticationSub.isEmpty()) {
+            if (authenticationSub != null && !authenticationSub.isEmpty()) {
                 startBuildingCorpus(corpusMetadata, authenticationSub);
             } else {
                 log.error("User is not authenticated to build corpus");
@@ -425,7 +433,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
     private void buildCorpus(Corpus corpusMetadata, String authenticationSub) {
         try {
-            if (authenticationSub != null || !authenticationSub.isEmpty()) {
+            if (authenticationSub != null && !authenticationSub.isEmpty()) {
                 startBuildingCorpus(corpusMetadata, authenticationSub);
             } else {
                 log.error("User is not authenticated to build corpus");
@@ -534,13 +542,18 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
     private void startBuildingCorpus(Corpus corpusMetadata, String authenticationSub) throws IOException {
         String corpusId = corpusMetadata.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue();
+
         if (contentConnectors != null) {
             corpora.add(corpusMetadata);
             corpusBuilderInfoDao.updateStatus(corpusId, CorpusStatus.SUBMITTED);
             CorpusBuilderInfoModel corpusBuilderInfoModel = corpusBuilderInfoDao.find(corpusId);
             Query query = new ObjectMapper().readValue(corpusBuilderInfoModel.getQuery(), Query.class);
 
+            List<String> sources = createListOfConnectors(query);
+
             for (ContentConnector connector : contentConnectors) {
+                if (sources.size() > 0 && !sources.contains(connector.getSourceName())) continue;
+
                 SearchResult searchResult = connector.search(query);
                 if (searchResult.getTotalHits() == 0)
                     continue;
@@ -557,7 +570,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
     }
 
     private void populateCorpus(Corpus corpus) {
-        String username = "";
+        String username;
         ContactInfo contactInfo = new ContactInfo();
         List<Name> names = new ArrayList<>();
         List<String> emails = new ArrayList<>();
@@ -598,8 +611,9 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         }
         corpus.getCorpusInfo().setContactInfo(contactInfo);
         for (Description description : corpus.getCorpusInfo().getIdentificationInfo().getDescriptions()) {
-            if (username != null || !username.isEmpty())
+            if (username != null && !username.isEmpty())
                 description.setValue(description.getValue().replaceAll("\\[user_name\\]", username));
+            else description.setValue(description.getValue().replaceAll("\\[user_name\\]", "unknown"));
         }
     }
 
@@ -632,5 +646,15 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         metadataIdentifier.setMetadataIdentifierSchemeName(MetadataIdentifierSchemeNameEnum.OTHER);
         metadataHeaderInfo.setMetadataRecordIdentifier(metadataIdentifier);
         return metadataIdentifier;
+    }
+
+    private List<String> createListOfConnectors(Query query) {
+        List<String> connectors = new ArrayList<>();
+        if (query.getParams().containsKey(OMTDFacetEnum.SOURCE.value())
+                && query.getParams().get(OMTDFacetEnum.SOURCE.value()) != null
+                && query.getParams().get(OMTDFacetEnum.SOURCE.value()).size() > 0) {
+            connectors.addAll(query.getParams().get(OMTDFacetEnum.SOURCE.value()));
+        }
+        return connectors;
     }
 }

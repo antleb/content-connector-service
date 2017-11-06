@@ -8,6 +8,7 @@ import eu.openminted.content.connector.utils.faceting.OMTDFacetLabels;
 import eu.openminted.content.service.OmtdNamespace;
 import eu.openminted.content.service.ServiceConfiguration;
 import eu.openminted.content.service.rest.ContentServiceController;
+import eu.openminted.registry.domain.Corpus;
 import eu.openminted.registry.domain.DocumentTypeEnum;
 import eu.openminted.registry.domain.PublicationTypeEnum;
 import eu.openminted.registry.domain.RightsStatementEnum;
@@ -185,6 +186,21 @@ public class FetchMetadataTaskTest {
         }
     }
 
+
+    @Test
+    @Ignore
+    public void testPrepare() {
+        query.setParams(new HashMap<>());
+        query.getParams().put(OMTDFacetEnum.SOURCE.value(), new ArrayList<>());
+        query.getParams().get(OMTDFacetEnum.SOURCE.value()).add("CORE");
+        query.getParams().put(OMTDFacetEnum.PUBLICATION_YEAR.value(), new ArrayList<>());
+        query.getParams().get(OMTDFacetEnum.PUBLICATION_YEAR.value()).add("2016");
+        query.getParams().put(OMTDFacetEnum.DOCUMENT_LANG.value(), new ArrayList<>());
+        query.getParams().get(OMTDFacetEnum.DOCUMENT_LANG.value()).add("Cs");
+
+        Corpus corpus = controller.prepare(query);
+        System.out.println(corpus);
+    }
 
     @Test
     @Ignore
