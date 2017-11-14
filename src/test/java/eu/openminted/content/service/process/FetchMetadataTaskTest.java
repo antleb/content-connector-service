@@ -38,6 +38,8 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration(classes = {ServiceConfiguration.class})
@@ -299,6 +301,43 @@ public class FetchMetadataTaskTest {
                 }
             }
         }
+    }
+
+    @Test
+    @Ignore
+    public void replaceFilename() {
+        String invalidCharacters = "[#|%|&|\\{|\\}|\\\\|<|>|*|\\?|\\/| |\\$|!|\'|\"|:|@]";
+        String filename = "# pound\n" +
+                "% percent\n" +
+                "& ampersand\n" +
+                "{ left bracket\n" +
+                "} right bracket\n" +
+                "\\ back slash\n" +
+                "< left angle bracket\n" +
+                "> right angle bracket\n" +
+                "* asterisk\n" +
+                "? question mark\n" +
+                "/ forward slash\n" +
+                "  blank spaces\n" +
+                "$ dollar sign\n" +
+                "! exclamation point\n" +
+                "' single quotes\n" +
+                "\" double quotes\n" +
+                ": colon\n" +
+                "@ at sign";
+
+        System.out.println("filename before:\n" +  filename);
+
+        java.util.regex.Pattern pattern = Pattern.compile(invalidCharacters);
+        Matcher matcher = pattern.matcher(filename);
+        while (matcher.find()) {
+            if (matcher.group().equalsIgnoreCase(" ")) continue;
+            System.out.println(matcher.start() + " " + matcher.end() + ": " + matcher.group());
+        }
+
+        filename = filename.replaceAll(invalidCharacters, ".");
+
+        System.out.println("filename after:\n" +  filename);
     }
 
     private void showXML(Node node) throws TransformerException, IOException {

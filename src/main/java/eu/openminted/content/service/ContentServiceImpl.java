@@ -103,6 +103,10 @@ public class ContentServiceImpl implements ContentService {
         return result;
     }
 
+    /**
+     *  Standard method that returns the status of the current service
+     * @return ServiceStatus
+     */
     @Override
     public ServiceStatus status() {
         serviceStatus.setMaxFulltextDocuments(contentLimit);

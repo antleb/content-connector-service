@@ -99,6 +99,7 @@ public class FetchMetadataTask implements Runnable {
 
         Document currentDoc = null;
         NodeList nodes = null;
+        String invalidCharacters = "[#|%|&|\\{|\\}|\\\\|<|>|*|\\?|\\/| |\\$|!|\'|\"|:|@]";
 
         final long period = (long) 10000;
 
@@ -217,7 +218,7 @@ public class FetchMetadataTask implements Runnable {
                     }
 
                     writeToFile(imported, metadataFile);
-                    storeRESTClient.storeFile(metadataFile, archiveId + "/metadata", identifier + ".xml");
+                    storeRESTClient.storeFile(metadataFile, archiveId + "/metadata", identifier.replaceAll(invalidCharacters, ".") + ".xml");
 
                     // Find Abstracts from imported node
                     XPathExpression abstractListExpression = xpath.compile("document/publication/abstracts/abstract");
@@ -235,7 +236,7 @@ public class FetchMetadataTask implements Runnable {
                         fileWriter.write(abstractText.toString());
                         fileWriter.flush();
                         fileWriter.close();
-                        storeRESTClient.storeFile(abstractFile, archiveId + "/abstract", identifier + ".txt");
+                        storeRESTClient.storeFile(abstractFile, archiveId + "/abstract", identifier.replaceAll(invalidCharacters, ".") + ".txt");
                     }
 
                     metadataProgress++;
@@ -339,7 +340,7 @@ public class FetchMetadataTask implements Runnable {
                                         mimetype = "pdf";
                                     }
 
-                                    storeRESTClient.storeFile(downloadFile, archiveId + "/fulltext", identifier + "." + mimetype);
+                                    storeRESTClient.storeFile(downloadFile, archiveId + "/fulltext", identifier.replaceAll(invalidCharacters, ".") + "." + mimetype);
                                     fulltextProgress++;
                                     corpusBuildingState.setFulltextProgress(fulltextProgress);
                                     if (totalFulltext > 0 && fulltextProgress % 10 == 0) {
