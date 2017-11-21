@@ -140,7 +140,7 @@ public class FetchMetadataTask implements Runnable {
             inputStream = connector.fetchMetadata(query);
 
             Document doc = dbf.newDocumentBuilder().parse(inputStream);
-            nodes = (NodeList) xpath.evaluate("//OMTDPublications/documentMetadataRecord", doc, XPathConstants.NODESET);
+            nodes = (NodeList) xpath.evaluate("//documentMetadataRecords/documentMetadataRecord", doc, XPathConstants.NODESET);
         } catch (ParserConfigurationException e) {
             log.error("FetchMetadataTask.run-ParserConfigurationException ", e);
         } catch (IOException e) {
