@@ -170,9 +170,9 @@ public class CorpusBuilderExecutionQueueConsumer {
 
                                 corpusBuilderInfoDao.updateStatus(corpusBuilderInfoModel.getId(), CorpusStatus.CANCELED);
                             }
-                            if (!corpus.getCorpusInfo().getContactInfo().getContactEmail().isEmpty()) {
+                            if (!corpus.getCorpusInfo().getContactInfo().getContactPoint().isEmpty()) {
                                 EmailMessage emailMessage = new EmailMessage();
-                                emailMessage.setRecipient(corpus.getCorpusInfo().getContactInfo().getContactEmail());
+                                emailMessage.setRecipient(corpus.getCorpusInfo().getContactInfo().getContactPoint());
                                 emailMessage.setSubject("OpenMinTeD Corpus build request");
                                 emailMessage.setText(text);
 

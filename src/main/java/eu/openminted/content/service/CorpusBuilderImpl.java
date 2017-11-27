@@ -257,11 +257,8 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             DatasetDistributionInfo datasetDistributionInfo = new DatasetDistributionInfo();
             List<DatasetDistributionInfo> distributionInfos = new ArrayList<>();
 
-            DistributionLoc distributionLoc = new DistributionLoc();
-            distributionLoc.setDistributionMedium(DistributionMediumEnum.DOWNLOADABLE);
-
-            distributionLoc.setDistributionLocation(registryHost + "/api/request/corpus/download?archiveId=" + archiveID);
-            datasetDistributionInfo.getDistributionLoc().add(distributionLoc);
+            datasetDistributionInfo.setDistributionLocation(registryHost + "/api/request/corpus/download?archiveId=" + archiveID);
+            datasetDistributionInfo.setDistributionMedium(DistributionMediumEnum.DOWNLOADABLE);
 
             distributionInfos.add(datasetDistributionInfo);
             corpusInfo.setDistributionInfos(distributionInfos);
@@ -285,7 +282,15 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                     corpusBuildingState.setToken(authentication.getSub());
                     corpusBuildingState.setCurrentStatus(CorpusStatus.INITIATING.toString());
                     corpusBuildingState.setConnector(connector.getSourceName());
-                    corpusBuildingState.setTotalHits(corpusMetadata.getCorpusInfo().getCorpusSubtypeSpecificInfo().getRawCorpusInfo().getCorpusMediaPartsType().getCorpusTextParts().size());
+
+                    int totalHits = 0;
+
+                    for (SizeInfo sizeInfo : corpusMetadata.getCorpusInfo().getCorpusSubtypeSpecificInfo().getRawCorpusInfo().getSizes()) {
+                        if (sizeInfo.getSizeUnit() == SizeUnitEnum.TEXTS || sizeInfo.getSizeUnit() == SizeUnitEnum.FILES)
+                            totalHits += Integer.parseInt(sizeInfo.getSize());
+                    }
+
+                    corpusBuildingState.setTotalHits(totalHits);
                     producer.sendMessage(corpusBuildingState);
                 }
             } catch (ClassCastException e) {
@@ -304,15 +309,13 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                                          StringBuilder sourcesBuilder,
                                          SearchResult result) {
         CorpusTextPartInfo corpusTextPartInfo = new CorpusTextPartInfo();
-        CorpusMediaPartsType corpusMediaPartsType = new CorpusMediaPartsType();
         RawCorpusInfo rawCorpusInfo = new RawCorpusInfo();
         CorpusSubtypeSpecificInfo corpusSubtypeSpecificInfo = new CorpusSubtypeSpecificInfo();
 
-        rawCorpusInfo.setCorpusMediaPartsType(corpusMediaPartsType);
         corpusSubtypeSpecificInfo.setRawCorpusInfo(rawCorpusInfo);
         corpusInfo.setCorpusSubtypeSpecificInfo(corpusSubtypeSpecificInfo);
 
-        corpusInfo.getCorpusSubtypeSpecificInfo().getRawCorpusInfo().getCorpusMediaPartsType().getCorpusTextParts().add(corpusTextPartInfo);
+//        corpusInfo.getCorpusSubtypeSpecificInfo().getRawCorpusInfo().set().getCorpusTextParts().add(corpusTextPartInfo);
 
         Description description = new Description();
         description.setLang("en");
@@ -327,11 +330,8 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                 languagesCounter++;
                 publicationsCounter += value.getCount();
 
-                Language language = new Language();
                 LanguageInfo languageInfo = new LanguageInfo();
-
-                language.setLanguageTag(value.getLabel());
-                language.setLanguageId(value.getValue());
+                String language = value.getValue();
                 languageInfo.setLanguage(language);
 
                 SizeInfo languageSizeInfo = new SizeInfo();
@@ -339,7 +339,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                 languageSizeInfo.setSizeUnit(SizeUnitEnum.TEXTS);
                 languageInfo.setSizePerLanguage(languageSizeInfo);
 
-                corpusTextPartInfo.getLanguages().add(languageInfo);
+                corpusSubtypeSpecificInfo.getRawCorpusInfo().getLanguages().add(languageInfo);
             }
         }
 
@@ -361,12 +361,12 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             lingualityInfo.setLingualityType(LingualityTypeEnum.MONOLINGUAL);
         }
 
-        corpusTextPartInfo.setLingualityInfo(lingualityInfo);
+        corpusSubtypeSpecificInfo.getRawCorpusInfo().setLingualityInfo(lingualityInfo);
 
         SizeInfo sizeInfo = new SizeInfo();
         sizeInfo.setSize(String.valueOf(result.getTotalHits()));
         sizeInfo.setSizeUnit(SizeUnitEnum.TEXTS);
-        corpusTextPartInfo.getSizes().add(sizeInfo);
+        corpusSubtypeSpecificInfo.getRawCorpusInfo().getSizes().add(sizeInfo);
     }
 
     private void addCorpusLicenceFields(Facet facet, CorpusInfo corpusInfo) {
@@ -374,9 +374,9 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             if (value.getCount() > 0) {
                 DatasetDistributionInfo datasetDistributionInfo = new DatasetDistributionInfo();
                 RightsInfo rightsInfo = createRightsInfo(value);
-                datasetDistributionInfo.setRightsInfo(rightsInfo);
+//                datasetDistributionInfo.setRightsInfo(rightsInfo);
                 SizeInfo sizeInfo = createSizeInfo(value);
-                datasetDistributionInfo.getSizes().add(sizeInfo);
+//                datasetDistributionInfo.getSizes().add(sizeInfo);
                 corpusInfo.getDistributionInfos().add(datasetDistributionInfo);
             }
         }
@@ -524,12 +524,9 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         licenceInfo.setLicence(LicenceEnum.NON_STANDARD_LICENCE_TERMS);
         licenceInfo.setNonStandardLicenceTermsURL(value.getValue());
 
-        LicenceInfos licenceInfos = new LicenceInfos();
-        licenceInfos.getLicenceInfo().add(licenceInfo);
         rightsInfo.setLicenceInfos(new ArrayList<>());
-        rightsInfo.getLicenceInfos().add(licenceInfos);
-        rightsInfo.setRightsStatement(new ArrayList<>());
-        rightsInfo.getRightsStatement().add(omtdFacetLabels.getRightsStmtEnumFromLabel().get(value.getValue()));
+        rightsInfo.getLicenceInfos().add(licenceInfo);
+        rightsInfo.setRightsStatement(omtdFacetLabels.getRightsStmtEnumFromLabel().get(value.getValue()));
         return rightsInfo;
     }
 
@@ -563,7 +560,15 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                 corpusBuildingState.setToken(authenticationSub);
                 corpusBuildingState.setCurrentStatus(CorpusStatus.SUBMITTED.toString());
                 corpusBuildingState.setConnector(connector.getSourceName());
-                corpusBuildingState.setTotalHits(corpusMetadata.getCorpusInfo().getCorpusSubtypeSpecificInfo().getRawCorpusInfo().getCorpusMediaPartsType().getCorpusTextParts().size());
+
+                int totalHits = 0;
+
+                for (SizeInfo sizeInfo : corpusMetadata.getCorpusInfo().getCorpusSubtypeSpecificInfo().getRawCorpusInfo().getSizes()) {
+                    if (sizeInfo.getSizeUnit() == SizeUnitEnum.TEXTS || sizeInfo.getSizeUnit() == SizeUnitEnum.FILES)
+                        totalHits += Integer.parseInt(sizeInfo.getSize());
+                }
+
+                corpusBuildingState.setTotalHits(totalHits);
                 producer.sendMessage(corpusBuildingState);
             }
         }
@@ -572,7 +577,6 @@ public class CorpusBuilderImpl implements CorpusBuilder {
     private void populateCorpus(Corpus corpus) {
         String username;
         ContactInfo contactInfo = new ContactInfo();
-        List<Name> names = new ArrayList<>();
         List<String> emails = new ArrayList<>();
         List<PersonInfo> personInfos = new ArrayList<>();
         CommunicationInfo communicationInfo = new CommunicationInfo();
@@ -581,30 +585,25 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
         if (SecurityContextHolder.getContext() != null && SecurityContextHolder.getContext().getAuthentication() instanceof OIDCAuthenticationToken) {
             OIDCAuthenticationToken authentication = (OIDCAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
-            getNamesFromAuthenticationToken(authentication, names);
-            personInfo.setNames(names);
+            getNamesFromAuthenticationToken(authentication, personInfo);
 
             emails.add(authentication.getUserInfo().getEmail());
             communicationInfo.setEmails(emails);
             personInfo.setCommunicationInfo(communicationInfo);
             personInfos.add(personInfo);
 
-            contactInfo.setContactEmail(authentication.getUserInfo().getEmail());
+            contactInfo.setContactType(ContactTypeEnum.CONTACT_EMAIL);
+            contactInfo.setContactPoint(authentication.getUserInfo().getEmail());
             contactInfo.setContactPersons(personInfos);
 
             username = authentication.getUserInfo().getName();
             if (username == null) username = "";
         } else {
             log.warn("There is no valid authentication token. Going with default email.");
-            Name name = new Name();
-            name.setValue(tokenName);
-            name.setLang("en");
 
-            names.add(name);
-            personInfo.setNames(names);
-            personInfos.add(personInfo);
-
-            contactInfo.setContactEmail(tokenEmail);
+            personInfo.setGivenName(tokenName);
+            contactInfo.setContactPoint(tokenEmail);
+            contactInfo.setContactType(ContactTypeEnum.CONTACT_EMAIL);
             contactInfo.setContactPersons(personInfos);
 
             username = tokenName;
@@ -617,26 +616,18 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         }
     }
 
-    private void getNamesFromAuthenticationToken(OIDCAuthenticationToken authentication, List<Name> names) {
-        Name name = new Name();
-        Name familyName = new Name();
-        Name givenName = new Name();
-        Name preferredUsername = new Name();
+    private void getNamesFromAuthenticationToken(OIDCAuthenticationToken authentication, PersonInfo personInfo) {
+        String name = authentication.getUserInfo().getName();
+        String surname = authentication.getUserInfo().getFamilyName();
+        String givenName = authentication.getUserInfo().getGivenName();
+        String preferredUsername = authentication.getUserInfo().getPreferredUsername();
 
-        name.setValue(authentication.getUserInfo().getName());
-        familyName.setValue(authentication.getUserInfo().getFamilyName());
-        givenName.setValue(authentication.getUserInfo().getGivenName());
-        preferredUsername.setValue(authentication.getUserInfo().getPreferredUsername());
+        if (givenName == null || (givenName.isEmpty() && name != null))
+            personInfo.setGivenName(authentication.getUserInfo().getName());
+        else
+            personInfo.setGivenName(givenName);
 
-        name.setLang("en");
-        familyName.setLang("en");
-        givenName.setLang("en");
-        preferredUsername.setLang("en");
-
-        names.add(name);
-        names.add(familyName);
-        names.add(givenName);
-        names.add(preferredUsername);
+        personInfo.setSurname(surname);
     }
 
     private MetadataIdentifier createMetadataIdentifier(MetadataHeaderInfo metadataHeaderInfo) {
