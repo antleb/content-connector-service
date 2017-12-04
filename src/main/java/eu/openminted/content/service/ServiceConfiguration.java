@@ -5,13 +5,9 @@ import org.apache.commons.dbcp2.BasicDataSource;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.beans.factory.config.PropertyPlaceholderConfigurer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
-import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jms.annotation.EnableJms;
 import org.springframework.jms.config.DefaultJmsListenerContainerFactory;
@@ -19,14 +15,12 @@ import org.springframework.jms.core.JmsTemplate;
 import org.springframework.jms.support.converter.MappingJackson2MessageConverter;
 import org.springframework.jms.support.converter.MessageConverter;
 import org.springframework.jms.support.converter.MessageType;
-import org.springframework.security.access.method.P;
 
 import javax.sql.DataSource;
-import java.io.IOException;
 
 @Configuration
 @EnableJms
-@ComponentScan({"eu.openminted.content"})//, "eu.openminted.content.connector.core", "eu.openminted.content.service.security"})
+@ComponentScan({"eu.openminted.content"})
 public class ServiceConfiguration {
 
     private static Logger logger = LogManager.getLogger(ServiceConfiguration.class);

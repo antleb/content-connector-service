@@ -285,11 +285,13 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
                     int totalHits = 0;
 
-                    for (SizeInfo sizeInfo : corpusMetadata.getCorpusInfo().getCorpusSubtypeSpecificInfo().getRawCorpusInfo().getSizes()) {
-                        if (sizeInfo.getSizeUnit() == SizeUnitEnum.TEXTS || sizeInfo.getSizeUnit() == SizeUnitEnum.FILES)
-                            totalHits += Integer.parseInt(sizeInfo.getSize());
-                    }
+                    if (corpusInfo.getDistributionInfos().size() > 0) {
 
+                        for (SizeInfo sizeInfo : corpusInfo.getDistributionInfos().get(0).getSizes()) {
+                            if (sizeInfo.getSizeUnit() == SizeUnitEnum.TEXTS || sizeInfo.getSizeUnit() == SizeUnitEnum.FILES)
+                                totalHits += Integer.parseInt(sizeInfo.getSize());
+                        }
+                    }
                     corpusBuildingState.setTotalHits(totalHits);
                     producer.sendMessage(corpusBuildingState);
                 }
@@ -366,7 +368,12 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         SizeInfo sizeInfo = new SizeInfo();
         sizeInfo.setSize(String.valueOf(result.getTotalHits()));
         sizeInfo.setSizeUnit(SizeUnitEnum.TEXTS);
-        corpusSubtypeSpecificInfo.getRawCorpusInfo().getSizes().add(sizeInfo);
+
+        DocumentInfo documentInfo = new DocumentInfo();
+        documentInfo.getSizes().add(sizeInfo);
+
+        if (corpusInfo.getDistributionInfos().size() > 0)
+            corpusInfo.getDistributionInfos().get(0).getSizes().add(sizeInfo);
     }
 
     private void addCorpusLicenceFields(Facet facet, CorpusInfo corpusInfo) {
@@ -563,10 +570,11 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
                 int totalHits = 0;
 
-                for (SizeInfo sizeInfo : corpusMetadata.getCorpusInfo().getCorpusSubtypeSpecificInfo().getRawCorpusInfo().getSizes()) {
-                    if (sizeInfo.getSizeUnit() == SizeUnitEnum.TEXTS || sizeInfo.getSizeUnit() == SizeUnitEnum.FILES)
-                        totalHits += Integer.parseInt(sizeInfo.getSize());
-                }
+                if (corpusMetadata.getCorpusInfo().getDistributionInfos().size() > 0)
+                    for (SizeInfo sizeInfo :  corpusMetadata.getCorpusInfo().getDistributionInfos().get(0).getSizes()) {
+                        if (sizeInfo.getSizeUnit() == SizeUnitEnum.TEXTS || sizeInfo.getSizeUnit() == SizeUnitEnum.FILES)
+                            totalHits += Integer.parseInt(sizeInfo.getSize());
+                    }
 
                 corpusBuildingState.setTotalHits(totalHits);
                 producer.sendMessage(corpusBuildingState);

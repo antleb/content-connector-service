@@ -64,6 +64,15 @@ public class FetchMetadataTaskTest {
     }
 
     @Test
+    public void testContentConnectors() {
+        System.out.println("Print all available connectors\n");
+        for (ContentConnector contentConnector : contentConnectors) {
+            System.out.println(contentConnector.getSourceName());
+        }
+        System.out.println("\n");
+    }
+
+    @Test
     @Ignore
     public void testUnwantedValues() {
         query.setParams(new HashMap<>());
@@ -141,7 +150,7 @@ public class FetchMetadataTaskTest {
 
         SearchResult searchResult = controller.browse(query);
         if (searchResult != null) {
-            searchResult.getFacets().forEach(facet -> facet.getValues().forEach(value -> System.out.println("Facet " + facet.getLabel() + ": " + value.getValue() + (value.getLabel() != null ? "/" +value.getLabel():"")  + ": " + value.getCount())));
+            searchResult.getFacets().forEach(facet -> facet.getValues().forEach(value -> System.out.println("Facet " + facet.getLabel() + ": " + value.getValue() + (value.getLabel() != null ? "/" + value.getLabel() : "") + ": " + value.getCount())));
         }
     }
 
@@ -265,14 +274,14 @@ public class FetchMetadataTaskTest {
 //                                showXML(imported);
 
                             boolean hasFulltext = false;
-//
+
                             if (hashkeys != null && hashkeys.getLength() > 0) {
                                 for (int j = 0; j < hashkeys.getLength(); j++) {
-                                        Node hashkey = hashkeys.item(j);
-                                        if (hashkey != null) {
-                                            hasFulltext = true;
-                                            System.out.println(hashkey.getTextContent());
-                                        }
+                                    Node hashkey = hashkeys.item(j);
+                                    if (hashkey != null) {
+                                        hasFulltext = true;
+                                        System.out.println(hashkey.getTextContent());
+                                    }
                                 }
                                 countFulltext++;
                             } else {
@@ -326,7 +335,7 @@ public class FetchMetadataTaskTest {
                 ": colon\n" +
                 "@ at sign";
 
-        System.out.println("filename before:\n" +  filename);
+        System.out.println("filename before:\n" + filename);
 
         java.util.regex.Pattern pattern = Pattern.compile(invalidCharacters);
         Matcher matcher = pattern.matcher(filename);
@@ -337,7 +346,7 @@ public class FetchMetadataTaskTest {
 
         filename = filename.replaceAll(invalidCharacters, ".");
 
-        System.out.println("filename after:\n" +  filename);
+        System.out.println("filename after:\n" + filename);
     }
 
     private void showXML(Node node) throws TransformerException, IOException {
