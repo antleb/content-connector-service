@@ -64,6 +64,7 @@ public class FetchMetadataTaskTest {
     }
 
     @Test
+    @Ignore
     public void testContentConnectors() {
         System.out.println("Print all available connectors\n");
         for (ContentConnector contentConnector : contentConnectors) {
