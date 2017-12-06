@@ -158,7 +158,6 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         MetadataIdentifier metadataIdentifier = createMetadataIdentifier(metadataHeaderInfo);
 
         metadataHeaderInfo.setUserQuery(tempQuery.getKeyword());
-        corpusInfo.setDistributionInfos(new ArrayList<>());
 
         // prepare facets
         SearchResult result = new SearchResult();
@@ -255,13 +254,10 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         if (!queryString.isEmpty()) {
             String archiveID = storeRESTClient.createArchive().getResponse();
             DatasetDistributionInfo datasetDistributionInfo = new DatasetDistributionInfo();
-            List<DatasetDistributionInfo> distributionInfos = new ArrayList<>();
-
             datasetDistributionInfo.setDistributionLocation(registryHost + "/api/request/corpus/download?archiveId=" + archiveID);
             datasetDistributionInfo.setDistributionMedium(DistributionMediumEnum.DOWNLOADABLE);
+            corpusInfo.setDatasetDistributionInfo(datasetDistributionInfo);
 
-            distributionInfos.add(datasetDistributionInfo);
-            corpusInfo.setDistributionInfos(distributionInfos);
             storeRESTClient.createSubArchive(archiveID, "metadata");
             storeRESTClient.createSubArchive(archiveID, "fulltext");
             storeRESTClient.createSubArchive(archiveID, "abstract");
@@ -285,9 +281,9 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
                     int totalHits = 0;
 
-                    if (corpusInfo.getDistributionInfos().size() > 0) {
+                    if (corpusInfo.getDatasetDistributionInfo() != null) {
 
-                        for (SizeInfo sizeInfo : corpusInfo.getDistributionInfos().get(0).getSizes()) {
+                        for (SizeInfo sizeInfo : corpusInfo.getDatasetDistributionInfo().getSizes()) {
                             if (sizeInfo.getSizeUnit() == SizeUnitEnum.TEXTS || sizeInfo.getSizeUnit() == SizeUnitEnum.FILES)
                                 totalHits += Integer.parseInt(sizeInfo.getSize());
                         }
@@ -372,19 +368,17 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         DocumentInfo documentInfo = new DocumentInfo();
         documentInfo.getSizes().add(sizeInfo);
 
-        if (corpusInfo.getDistributionInfos().size() > 0)
-            corpusInfo.getDistributionInfos().get(0).getSizes().add(sizeInfo);
+        if (corpusInfo.getDatasetDistributionInfo() != null)
+            corpusInfo.getDatasetDistributionInfo().getSizes().add(sizeInfo);
     }
 
     private void addCorpusLicenceFields(Facet facet, CorpusInfo corpusInfo) {
         for (Value value : facet.getValues()) {
             if (value.getCount() > 0) {
-                DatasetDistributionInfo datasetDistributionInfo = new DatasetDistributionInfo();
                 RightsInfo rightsInfo = createRightsInfo(value);
-//                datasetDistributionInfo.setRightsInfo(rightsInfo);
+                corpusInfo.setRightsInfo(rightsInfo);
                 SizeInfo sizeInfo = createSizeInfo(value);
-//                datasetDistributionInfo.getSizes().add(sizeInfo);
-                corpusInfo.getDistributionInfos().add(datasetDistributionInfo);
+                corpusInfo.getDatasetDistributionInfo().getSizes().add(sizeInfo);
             }
         }
     }
@@ -570,8 +564,8 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
                 int totalHits = 0;
 
-                if (corpusMetadata.getCorpusInfo().getDistributionInfos().size() > 0)
-                    for (SizeInfo sizeInfo :  corpusMetadata.getCorpusInfo().getDistributionInfos().get(0).getSizes()) {
+                if (corpusMetadata.getCorpusInfo().getDatasetDistributionInfo() != null)
+                    for (SizeInfo sizeInfo :  corpusMetadata.getCorpusInfo().getDatasetDistributionInfo().getSizes()) {
                         if (sizeInfo.getSizeUnit() == SizeUnitEnum.TEXTS || sizeInfo.getSizeUnit() == SizeUnitEnum.FILES)
                             totalHits += Integer.parseInt(sizeInfo.getSize());
                     }
