@@ -78,7 +78,7 @@ public class FetchMetadataTaskTest {
     public void testUnwantedValues() {
         query.setParams(new HashMap<>());
         query.getParams().put(OMTDFacetEnum.DOCUMENT_LANG.value(), new ArrayList<>());
-        query.getParams().get(OMTDFacetEnum.DOCUMENT_LANG.value()).add("Spanish");
+        query.getParams().get(OMTDFacetEnum.DOCUMENT_LANG.value()).add("Nl");
 
         SearchResult searchResult = controller.browse(query);
         if (searchResult != null) {
@@ -120,14 +120,14 @@ public class FetchMetadataTaskTest {
     @Ignore
     public void testLanguageValues() {
         query.setParams(new HashMap<>());
-        query.getParams().put(OMTDFacetEnum.DOCUMENT_TYPE.value(), new ArrayList<>());
+//        query.getParams().put(OMTDFacetEnum.DOCUMENT_TYPE.value(), new ArrayList<>());
         query.getParams().put(OMTDFacetEnum.DOCUMENT_LANG.value(), new ArrayList<>());
 //        query.getParams().put(OMTDFacetEnum.PUBLICATION_YEAR.value(), new ArrayList<>());
-        query.getParams().get("documentlanguage").add("Greek, Modern (1453-)");
+//        query.getParams().get("documentlanguage").add("Greek, Modern (1453-)");
 //        query.getParams().get("documentlanguage").add("Lithuanian");
-//        query.getParams().get(OMTDFacetEnum.DOCUMENT_LANG.value()).add("en");
+        query.getParams().get(OMTDFacetEnum.DOCUMENT_LANG.value()).add("Nl");
 //        query.getParams().get(OMTDFacetEnum.DOCUMENT_TYPE.value()).add(omtdFacetLabels.getDocumentTypeLabelFromEnum(DocumentTypeEnum.WITH_FULL_TEXT));
-        query.getParams().get(OMTDFacetEnum.DOCUMENT_TYPE.value()).add(omtdFacetLabels.getDocumentTypeLabelFromEnum(DocumentTypeEnum.WITH_ABSTRACT_ONLY));
+//        query.getParams().get(OMTDFacetEnum.DOCUMENT_TYPE.value()).add(omtdFacetLabels.getDocumentTypeLabelFromEnum(DocumentTypeEnum.WITH_ABSTRACT_ONLY));
 //        query.getParams().get("documenttype").add("fulltext");
 //        query.getParams().get("publicationyear").add("2010");
 //        query.getParams().get("publicationyear").add("1528");
@@ -149,9 +149,16 @@ public class FetchMetadataTaskTest {
         &fq=resulttypename:publication&fq=deletedbyinference:false&fq=resultrights:Open+Access&fl=__result&q=*:*
          */
 
+
         SearchResult searchResult = controller.browse(query);
         if (searchResult != null) {
-            searchResult.getFacets().forEach(facet -> facet.getValues().forEach(value -> System.out.println("Facet " + facet.getLabel() + ": " + value.getValue() + (value.getLabel() != null ? "/" + value.getLabel() : "") + ": " + value.getCount())));
+//            searchResult.getFacets().forEach(facet -> facet.getValues().forEach(value -> System.out.println("Facet " + facet.getLabel() + ": " + value.getValue() + (value.getLabel() != null ? "/" + value.getLabel() : "") + ": " + value.getCount())));
+
+            searchResult.getFacets().forEach(facet -> {
+                if (facet.getField().equalsIgnoreCase(OMTDFacetEnum.DOCUMENT_LANG.value()))
+                    facet.getValues().forEach(value ->
+                            System.out.println("Facet " + facet.getLabel() + ": " + value.getValue() + (value.getLabel() != null ? "/" + value.getLabel() : "") + ": " + value.getCount()));
+            });
         }
     }
 
@@ -316,7 +323,7 @@ public class FetchMetadataTaskTest {
     @Test
     @Ignore
     public void replaceFilename() {
-        String invalidCharacters = "[#|%|&|\\{|\\}|\\\\|<|>|*|\\?|\\/| |\\$|!|\'|\"|:|@]";
+        String invalidCharacters = "[#%&{}\\\\<>*?/ $!\'\":@]";
         String filename = "# pound\n" +
                 "% percent\n" +
                 "& ampersand\n" +
