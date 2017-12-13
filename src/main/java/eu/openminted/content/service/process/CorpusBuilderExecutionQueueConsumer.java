@@ -162,7 +162,7 @@ public class CorpusBuilderExecutionQueueConsumer {
 
 //                                corpusBuilderInfoModel.setStatus(CorpusStatus.CREATED.toString());
                                 corpusBuilderInfoDao.update(corpusBuilderInfoModel.getId(), "status", CorpusStatus.CREATED);
-                                text = "Corpus building with ID " + corpusId + " has finished!\n"+
+                                text = "Corpus building has finished!\n"+
                                         "Your corpus has been created and you can access it at "+
                                         registryHost + "/landingPage/corpus/" + corpusId;
                             } else {

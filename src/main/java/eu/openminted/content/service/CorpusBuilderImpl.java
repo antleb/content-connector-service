@@ -149,9 +149,13 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
         CorpusInfo corpusInfo = new CorpusInfo();
         MetadataHeaderInfo metadataHeaderInfo = new MetadataHeaderInfo();
+        DatasetDistributionInfo datasetDistributionInfo = new DatasetDistributionInfo();
+        IdentificationInfo identificationInfo = new IdentificationInfo();
+
 
         // corpusInfo elements
-        IdentificationInfo identificationInfo = new IdentificationInfo();
+        corpusInfo.setDatasetDistributionInfo(datasetDistributionInfo);
+
         identificationInfo.setResourceNames(new ArrayList<>());
 
         // metadataHeaderInfo elements
@@ -253,10 +257,16 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
         if (!queryString.isEmpty()) {
             String archiveID = storeRESTClient.createArchive().getResponse();
-            DatasetDistributionInfo datasetDistributionInfo = new DatasetDistributionInfo();
+
+            DataFormatInfo dataFormatInfo = new DataFormatInfo();
+            dataFormatInfo.setDataFormat(DataFormatType.APPLICATION_PDF);
+
+            TextFormatInfo textFormatInfo = new TextFormatInfo();
+            textFormatInfo.setDataFormatInfo(dataFormatInfo);
+
             datasetDistributionInfo.setDistributionLocation(registryHost + "/api/request/corpus/download?archiveId=" + archiveID);
             datasetDistributionInfo.setDistributionMedium(DistributionMediumEnum.DOWNLOADABLE);
-            corpusInfo.setDatasetDistributionInfo(datasetDistributionInfo);
+            datasetDistributionInfo.getTextFormats().add(textFormatInfo);
 
             storeRESTClient.createSubArchive(archiveID, "metadata");
             storeRESTClient.createSubArchive(archiveID, "fulltext");
@@ -330,7 +340,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
                 LanguageInfo languageInfo = new LanguageInfo();
                 String language = value.getValue();
-                languageInfo.setLanguage(language);
+                languageInfo.setLanguage(language.toLowerCase());
 
                 SizeInfo languageSizeInfo = new SizeInfo();
                 languageSizeInfo.setSize(String.valueOf(value.getCount()));
@@ -368,8 +378,8 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         DocumentInfo documentInfo = new DocumentInfo();
         documentInfo.getSizes().add(sizeInfo);
 
-        if (corpusInfo.getDatasetDistributionInfo() != null)
-            corpusInfo.getDatasetDistributionInfo().getSizes().add(sizeInfo);
+//        if (corpusInfo.getDatasetDistributionInfo() != null)
+//            corpusInfo.getDatasetDistributionInfo().getSizes().add(sizeInfo);
     }
 
     private void addCorpusLicenceFields(Facet facet, CorpusInfo corpusInfo) {
