@@ -9,9 +9,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-import org.springframework.jdbc.datasource.embedded.EmbeddedDatabase;
-import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseBuilder;
-import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseType;
 
 import javax.sql.DataSource;
 import java.io.IOException;
@@ -30,7 +27,8 @@ public class ConnectorServiceTestConfiguration {
     @Bean
     public static PropertyPlaceholderConfigurer propertyPlaceholderConfigurer() throws IOException {
         final PropertyPlaceholderConfigurer ppc = new PropertyPlaceholderConfigurer();
-        ppc.setLocations(new ClassPathResource("application.properties"), new ClassPathResource("tokens-override.properties"));
+        ppc.setLocations(new ClassPathResource("application.properties"),
+                new ClassPathResource("tokens-override.properties"));
         ppc.setIgnoreUnresolvablePlaceholders(true);
         ppc.setIgnoreResourceNotFound(true);
         return ppc;

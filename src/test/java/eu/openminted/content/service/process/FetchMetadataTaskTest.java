@@ -6,17 +6,28 @@ import eu.openminted.content.connector.SearchResult;
 import eu.openminted.content.connector.utils.faceting.OMTDFacetEnum;
 import eu.openminted.content.connector.utils.faceting.OMTDFacetLabels;
 import eu.openminted.content.service.OmtdNamespace;
-import eu.openminted.content.service.ServiceConfiguration;
 import eu.openminted.content.service.rest.ContentServiceController;
+import eu.openminted.registry.core.domain.Facet;
+import eu.openminted.registry.core.domain.Value;
 import eu.openminted.registry.domain.Corpus;
-import eu.openminted.registry.domain.DocumentTypeEnum;
 import eu.openminted.registry.domain.PublicationTypeEnum;
 import eu.openminted.registry.domain.RightsStatementEnum;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mitre.openid.connect.client.OIDCAuthenticationFilter;
+import org.mitre.openid.connect.client.OIDCAuthenticationProvider;
+import org.mitre.openid.connect.model.DefaultUserInfo;
+import org.mitre.openid.connect.model.OIDCAuthenticationToken;
+import org.mitre.openid.connect.model.UserInfo;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.w3c.dom.Document;
@@ -36,13 +47,15 @@ import javax.xml.xpath.XPathFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @RunWith(SpringJUnit4ClassRunner.class)
-@ContextConfiguration(classes = {ServiceConfiguration.class})
+//@ContextConfiguration(classes = {ServiceConfiguration.class})
+@ContextConfiguration("classpath:/springrest-servlet.xml")
 public class FetchMetadataTaskTest {
 
     @Autowired
@@ -54,10 +67,41 @@ public class FetchMetadataTaskTest {
     @Autowired
     private OMTDFacetLabels omtdFacetLabels;
 
+    @Autowired
+    private OIDCAuthenticationFilter openIdConnectAuthenticationFilter;
+
+    @Autowired
+    private OIDCAuthenticationProvider  openIdConnectAuthenticationProvider;
+
+    @Autowired
+    private AuthenticationManager authenticationManager;
+
+    @Autowired
+    private Environment environment;
+
     private Query query;
 
     @Before
     public void init() {
+
+        UserInfo userInfo = new DefaultUserInfo();
+        userInfo.setSub("0931730097797427@openminted.eu");
+        userInfo.setName("Constantine Yannoussis");
+        userInfo.setEmail("kgiann78@gmail.com");
+
+        Collection<GrantedAuthority> authorities = new ArrayList<>();
+        authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
+        authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
+
+        OIDCAuthenticationToken oidcAuthenticationToken = new OIDCAuthenticationToken("0931730097797427@openminted.eu",
+                environment.getProperty("oidc.issuer"),
+                userInfo,
+                authorities,
+                null,
+                environment.getProperty("oidc.secret"),
+                environment.getProperty("oidc.id"));
+        SecurityContextHolder.getContext().setAuthentication(oidcAuthenticationToken);
+
         query = new Query();
         query.setFrom(0);
         query.setTo(1);
@@ -120,28 +164,35 @@ public class FetchMetadataTaskTest {
     @Ignore
     public void testLanguageValues() {
         query.setParams(new HashMap<>());
-//        query.getParams().put(OMTDFacetEnum.DOCUMENT_TYPE.value(), new ArrayList<>());
         query.getParams().put(OMTDFacetEnum.DOCUMENT_LANG.value(), new ArrayList<>());
-//        query.getParams().put(OMTDFacetEnum.PUBLICATION_YEAR.value(), new ArrayList<>());
-//        query.getParams().get("documentlanguage").add("Greek, Modern (1453-)");
-//        query.getParams().get("documentlanguage").add("Lithuanian");
         query.getParams().get(OMTDFacetEnum.DOCUMENT_LANG.value()).add("Nl");
-//        query.getParams().get(OMTDFacetEnum.DOCUMENT_TYPE.value()).add(omtdFacetLabels.getDocumentTypeLabelFromEnum(DocumentTypeEnum.WITH_FULL_TEXT));
-//        query.getParams().get(OMTDFacetEnum.DOCUMENT_TYPE.value()).add(omtdFacetLabels.getDocumentTypeLabelFromEnum(DocumentTypeEnum.WITH_ABSTRACT_ONLY));
-//        query.getParams().get("documenttype").add("fulltext");
-//        query.getParams().get("publicationyear").add("2010");
-//        query.getParams().get("publicationyear").add("1528");
-//        query.setKeyword("digital");
-//        query.getParams().get("documentlanguage").add("Czech");
-//        query.getParams().get("documentlanguage").add("Catalan; Valencian");
-//        query.getParams().get("documentlanguage").add("English, Middle (1100-1500)");
-//        query.getParams().get("documentlanguage").add("Greek, Ancient (to 1453)");
-//        query.getParams().get("documentlanguage").add("Bokmål, Norwegian; Norwegian Bokmål");
-//        query.getParams().get("documentlanguage").add("French");
-//        query.getParams().get("documentlanguage").add("Official Aramaic (700-300 BCE); Imperial Aramaic (700-300 BCE)");
-//        query.getParams().get("documentlanguage").add("Official Aramaic (700-300 Bce); Imperial Aramaic (700-300 Bce)");
+
+//        Additional parameters for filtering are in comments below
 
         /*
+            query.getParams().put(OMTDFacetEnum.DOCUMENT_TYPE.value(), new ArrayList<>());
+            query.getParams().put(OMTDFacetEnum.PUBLICATION_YEAR.value(), new ArrayList<>());
+            query.getParams().get("documentlanguage").add("Greek, Modern (1453-)");
+            query.getParams().get("documentlanguage").add("Lithuanian");
+            query.getParams().get(OMTDFacetEnum.DOCUMENT_TYPE.value()).add(omtdFacetLabels.getDocumentTypeLabelFromEnum(DocumentTypeEnum.WITH_FULL_TEXT));
+            query.getParams().get(OMTDFacetEnum.DOCUMENT_TYPE.value()).add(omtdFacetLabels.getDocumentTypeLabelFromEnum(DocumentTypeEnum.WITH_ABSTRACT_ONLY));
+            query.getParams().get("documenttype").add("fulltext");
+            query.getParams().get("publicationyear").add("2010");
+            query.getParams().get("publicationyear").add("1528");
+            query.setKeyword("digital");
+            query.getParams().get("documentlanguage").add("Czech");
+            query.getParams().get("documentlanguage").add("Catalan; Valencian");
+            query.getParams().get("documentlanguage").add("English, Middle (1100-1500)");
+            query.getParams().get("documentlanguage").add("Greek, Ancient (to 1453)");
+            query.getParams().get("documentlanguage").add("Bokmål, Norwegian; Norwegian Bokmål");
+            query.getParams().get("documentlanguage").add("French");
+            query.getParams().get("documentlanguage").add("Official Aramaic (700-300 BCE); Imperial Aramaic (700-300 BCE)");
+            query.getParams().get("documentlanguage").add("Official Aramaic (700-300 Bce); Imperial Aramaic (700-300 Bce)");
+        */
+
+//        Example of an openAIRE's solr query
+        /*
+
         start=0&rows=1&facet=true&facet.field=instancetypename
         &facet.field=resultdateofacceptance&facet.field=resultrights
         &facet.field=resultlanguagename
@@ -151,9 +202,8 @@ public class FetchMetadataTaskTest {
 
 
         SearchResult searchResult = controller.browse(query);
-        if (searchResult != null) {
-//            searchResult.getFacets().forEach(facet -> facet.getValues().forEach(value -> System.out.println("Facet " + facet.getLabel() + ": " + value.getValue() + (value.getLabel() != null ? "/" + value.getLabel() : "") + ": " + value.getCount())));
 
+        if (searchResult != null) {
             searchResult.getFacets().forEach(facet -> {
                 if (facet.getField().equalsIgnoreCase(OMTDFacetEnum.DOCUMENT_LANG.value()))
                     facet.getValues().forEach(value ->
@@ -166,29 +216,32 @@ public class FetchMetadataTaskTest {
     @Ignore
     public void testBrowse() {
         query.setParams(new HashMap<>());
-        query.getParams().put("licence", new ArrayList<>());
-        query.getParams().get("licence").add("Embargo");
-        query.getParams().put("publicationyear", new ArrayList<>());
-        query.getParams().get("publicationyear").add("2009");
-
-        query.setKeyword("alekos");
-
-
         query.getParams().put("source", new ArrayList<>());
         query.getParams().get("source").add("OpenAIRE");
+
+//        Additional parameters for filtering are in comments below
+
+        /*
+            query.setKeyword("alekos");
+
+            query.getParams().put("licence", new ArrayList<>());
+            query.getParams().get("licence").add("Embargo");
+            query.getParams().put("publicationyear", new ArrayList<>());
+            query.getParams().get("publicationyear").add("2009");
+            query.getParams().get("source").add("CORE");
+        */
+
 
         SearchResult searchResult = controller.browse(query);
         if (searchResult != null) {
 
             System.out.println("Results from OpenAIRE: " + searchResult.getTotalHits());
-        }
 
-        query.getParams().put("source", new ArrayList<>());
-        query.getParams().get("source").add("CORE");
-
-        searchResult = controller.browse(query);
-        if (searchResult != null) {
-            System.out.println("Results from CORE: " + searchResult.getTotalHits());
+            for (Facet facet : searchResult.getFacets()) {
+                for (Value value : facet.getValues()) {
+                    System.out.println(value.getValue() + " " + value.getCount());
+                }
+            }
         }
     }
 
@@ -196,8 +249,8 @@ public class FetchMetadataTaskTest {
     @Ignore
     public void testBrowseOnlyCORE() {
         query.setParams(new HashMap<>());
-//        query.getParams().put("source", new ArrayList<>());
-//        query.getParams().get("source").add("CORE");
+        query.getParams().put("source", new ArrayList<>());
+        query.getParams().get("source").add("CORE");
 
         SearchResult searchResult = controller.browse(query);
         if (searchResult != null) {
@@ -211,14 +264,28 @@ public class FetchMetadataTaskTest {
     public void testPrepare() {
         query.setParams(new HashMap<>());
         query.getParams().put(OMTDFacetEnum.SOURCE.value(), new ArrayList<>());
-        query.getParams().get(OMTDFacetEnum.SOURCE.value()).add("CORE");
-        query.getParams().put(OMTDFacetEnum.PUBLICATION_YEAR.value(), new ArrayList<>());
-        query.getParams().get(OMTDFacetEnum.PUBLICATION_YEAR.value()).add("2016");
+        query.getParams().get(OMTDFacetEnum.SOURCE.value()).add("OpenAIRE");
         query.getParams().put(OMTDFacetEnum.DOCUMENT_LANG.value(), new ArrayList<>());
-        query.getParams().get(OMTDFacetEnum.DOCUMENT_LANG.value()).add("Cs");
+        query.getParams().get(OMTDFacetEnum.DOCUMENT_LANG.value()).add("Grc");
+
+//        Additional parameters for filtering are in comments below
+
+        /*
+            query.getParams().get(OMTDFacetEnum.SOURCE.value()).add("CORE");
+            query.getParams().put(OMTDFacetEnum.PUBLICATION_YEAR.value(), new ArrayList<>());
+            query.getParams().get(OMTDFacetEnum.PUBLICATION_YEAR.value()).add("2016");
+            query.getParams().get(OMTDFacetEnum.DOCUMENT_LANG.value()).add("Cs");
+        */
 
         Corpus corpus = controller.prepare(query);
         System.out.println(corpus);
+    }
+
+    @Test
+    @Ignore
+    public void testUser() {
+        ResponseEntity<Object> responseEntity = controller.user();
+        System.out.println(responseEntity.getBody());
     }
 
     @Test

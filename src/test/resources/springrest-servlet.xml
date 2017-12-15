@@ -1,0 +1,17 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+ xmlns:context="http://www.springframework.org/schema/context"
+ xmlns:mvc="http://www.springframework.org/schema/mvc" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation=" http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd http://www.springframework.org/schema/context 
+        http://www.springframework.org/schema/context/spring-context-3.0.xsd http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc-3.0.xsd"      
+        default-autowire="byType" >
+
+ <import resource="corpus-builder-config.xml"/>
+
+ <!-- to test rest clients content connectors, uncomment the following line -->
+ <!--<import resource="classpath*:rest-clients.xml"/>-->
+
+ <mvc:annotation-driven/>
+ <context:component-scan base-package="eu.openminted.content,eu.openminted.content.connector.core" />
+
+</beans>
+

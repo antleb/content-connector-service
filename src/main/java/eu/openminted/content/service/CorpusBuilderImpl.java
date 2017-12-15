@@ -151,10 +151,11 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         MetadataHeaderInfo metadataHeaderInfo = new MetadataHeaderInfo();
         DatasetDistributionInfo datasetDistributionInfo = new DatasetDistributionInfo();
         IdentificationInfo identificationInfo = new IdentificationInfo();
-
+        ResourceCreationInfo resourceCreationInfo = new ResourceCreationInfo();
 
         // corpusInfo elements
         corpusInfo.setDatasetDistributionInfo(datasetDistributionInfo);
+        corpusInfo.setResourceCreationInfo(resourceCreationInfo);
 
         identificationInfo.setResourceNames(new ArrayList<>());
 
@@ -590,10 +591,9 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         String username;
         ContactInfo contactInfo = new ContactInfo();
         List<String> emails = new ArrayList<>();
-        List<PersonInfo> personInfos = new ArrayList<>();
         CommunicationInfo communicationInfo = new CommunicationInfo();
-
         PersonInfo personInfo = new PersonInfo();
+        ActorInfo actorInfo = new ActorInfo();
 
         if (SecurityContextHolder.getContext() != null && SecurityContextHolder.getContext().getAuthentication() instanceof OIDCAuthenticationToken) {
             OIDCAuthenticationToken authentication = (OIDCAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
@@ -602,25 +602,30 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             emails.add(authentication.getUserInfo().getEmail());
             communicationInfo.setEmails(emails);
             personInfo.setCommunicationInfo(communicationInfo);
-            personInfos.add(personInfo);
 
             contactInfo.setContactType(ContactTypeEnum.CONTACT_EMAIL);
             contactInfo.setContactPoint(authentication.getUserInfo().getEmail());
-            contactInfo.setContactPersons(personInfos);
 
             username = authentication.getUserInfo().getName();
             if (username == null) username = "";
         } else {
             log.warn("There is no valid authentication token. Going with default email.");
 
+            communicationInfo.getEmails().add(tokenEmail);
             personInfo.setGivenName(tokenName);
+            personInfo.setCommunicationInfo(communicationInfo);
             contactInfo.setContactPoint(tokenEmail);
             contactInfo.setContactType(ContactTypeEnum.CONTACT_EMAIL);
-            contactInfo.setContactPersons(personInfos);
-
             username = tokenName;
         }
+
+        contactInfo.getContactPersons().add(personInfo);
+        actorInfo.setActorType(ActorTypeEnum.PERSON);
+        actorInfo.setRelatedPerson(personInfo);
+
         corpus.getCorpusInfo().setContactInfo(contactInfo);
+        corpus.getCorpusInfo().getResourceCreationInfo().getResourceCreators().add(actorInfo);
+
         for (Description description : corpus.getCorpusInfo().getIdentificationInfo().getDescriptions()) {
             if (username != null && !username.isEmpty())
                 description.setValue(description.getValue().replaceAll("\\[user_name\\]", username));
