@@ -214,6 +214,26 @@ public class FetchMetadataTaskTest {
 
     @Test
     @Ignore
+    public void testPublicationType() {
+        query.setParams(new HashMap<>());
+        query.getParams().put(OMTDFacetEnum.SOURCE.value(), new ArrayList<>());
+        query.getParams().get(OMTDFacetEnum.SOURCE.value()).add("CORE");
+        query.getParams().put(OMTDFacetEnum.PUBLICATION_TYPE.value(), new ArrayList<>());
+        query.getParams().get(OMTDFacetEnum.PUBLICATION_TYPE.value()).add(PublicationTypeEnum.RESEARCH_ARTICLE.toString());
+
+        SearchResult searchResult = controller.browse(query);
+
+        if (searchResult != null) {
+            searchResult.getFacets().forEach(facet -> {
+                if (facet.getField().equalsIgnoreCase(OMTDFacetEnum.PUBLICATION_TYPE.value()))
+                    facet.getValues().forEach(value ->
+                            System.out.println("Facet " + facet.getLabel() + ": " + value.getValue() + (value.getLabel() != null ? "/" + value.getLabel() : "") + ": " + value.getCount()));
+            });
+        }
+    }
+
+    @Test
+    @Ignore
     public void testBrowse() {
         query.setParams(new HashMap<>());
         query.getParams().put("source", new ArrayList<>());
