@@ -1,4 +1,4 @@
-package eu.openminted.content.service.process;
+package eu.openminted.content.service;
 
 import eu.openminted.content.connector.ContentConnector;
 import eu.openminted.content.connector.Query;
@@ -54,9 +54,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @RunWith(SpringJUnit4ClassRunner.class)
-//@ContextConfiguration(classes = {ServiceConfiguration.class})
-@ContextConfiguration("classpath:/springrest-servlet.xml")
-public class FetchMetadataTaskTest {
+//@ContextConfiguration("classpath:/springrest-servlet.xml")
+@ContextConfiguration(classes = { ServiceConfiguration.class})
+public class ContentServiceBrowseTest {
 
     @Autowired
     private List<ContentConnector> contentConnectors;
@@ -68,40 +68,12 @@ public class FetchMetadataTaskTest {
     private OMTDFacetLabels omtdFacetLabels;
 
     @Autowired
-    private OIDCAuthenticationFilter openIdConnectAuthenticationFilter;
-
-    @Autowired
-    private OIDCAuthenticationProvider  openIdConnectAuthenticationProvider;
-
-    @Autowired
-    private AuthenticationManager authenticationManager;
-
-    @Autowired
     private Environment environment;
 
     private Query query;
 
     @Before
     public void init() {
-
-        UserInfo userInfo = new DefaultUserInfo();
-        userInfo.setSub("0931730097797427@openminted.eu");
-        userInfo.setName("Constantine Yannoussis");
-        userInfo.setEmail("kgiann78@gmail.com");
-
-        Collection<GrantedAuthority> authorities = new ArrayList<>();
-        authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
-        authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
-
-        OIDCAuthenticationToken oidcAuthenticationToken = new OIDCAuthenticationToken("0931730097797427@openminted.eu",
-                environment.getProperty("oidc.issuer"),
-                userInfo,
-                authorities,
-                null,
-                environment.getProperty("oidc.secret"),
-                environment.getProperty("oidc.id"));
-        SecurityContextHolder.getContext().setAuthentication(oidcAuthenticationToken);
-
         query = new Query();
         query.setFrom(0);
         query.setTo(1);
@@ -278,135 +250,6 @@ public class FetchMetadataTaskTest {
         }
     }
 
-
-    @Test
-    @Ignore
-    public void testPrepare() {
-        query.setParams(new HashMap<>());
-        query.getParams().put(OMTDFacetEnum.SOURCE.value(), new ArrayList<>());
-        query.getParams().get(OMTDFacetEnum.SOURCE.value()).add("OpenAIRE");
-        query.getParams().put(OMTDFacetEnum.DOCUMENT_LANG.value(), new ArrayList<>());
-        query.getParams().get(OMTDFacetEnum.DOCUMENT_LANG.value()).add("Grc");
-
-//        Additional parameters for filtering are in comments below
-
-        /*
-            query.getParams().get(OMTDFacetEnum.SOURCE.value()).add("CORE");
-            query.getParams().put(OMTDFacetEnum.PUBLICATION_YEAR.value(), new ArrayList<>());
-            query.getParams().get(OMTDFacetEnum.PUBLICATION_YEAR.value()).add("2016");
-            query.getParams().get(OMTDFacetEnum.DOCUMENT_LANG.value()).add("Cs");
-        */
-
-        Corpus corpus = controller.prepare(query);
-        System.out.println(corpus);
-    }
-
-    @Test
-    @Ignore
-    public void testUser() {
-        ResponseEntity<Object> responseEntity = controller.user();
-        System.out.println(responseEntity.getBody());
-    }
-
-    @Test
-    @Ignore
-    public void run() throws Exception {
-
-        Query query = new Query();
-        query.setFrom(0);
-        query.setTo(1);
-        query.setParams(new HashMap<>());
-        query.getParams().put("licence", new ArrayList<>());
-        query.getParams().get("licence").add("Open Access");
-        query.getParams().put("source", new ArrayList<>());
-        query.getParams().get("source").add("OpenAIRE");
-        query.setKeyword("digital");
-
-        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-        XPath xpath = XPathFactory.newInstance().newXPath();
-        xpath.setNamespaceContext(new OmtdNamespace());
-
-        Document currentDoc;
-        NodeList nodes;
-
-
-        if (contentConnectors != null) {
-            for (ContentConnector connector : contentConnectors) {
-                System.out.println(connector.getSourceName());
-                if (connector.getSourceName().equalsIgnoreCase("OpenAIRE")) {
-                    SearchResult searchResult = connector.search(query);
-
-                    System.out.println(searchResult.getTotalHits());
-
-                    InputStream inputStream = connector.fetchMetadata(query);
-
-
-                    currentDoc = dbf.newDocumentBuilder().newDocument();
-
-                    Document doc = dbf.newDocumentBuilder().parse(inputStream);
-                    nodes = (NodeList) xpath.evaluate("//OMTDPublications/documentMetadataRecord", doc, XPathConstants.NODESET);
-
-//                    DocumentMetadataRecord documentMetadataRecord = new DocumentMetadataRecord();
-//                    documentMetadataRecord.getDocument().getPublication().getDistributions().get(0).getHashkey();
-                    int countAbstracts = 0;
-                    int countFulltext = 0;
-                    if (nodes != null) {
-                        for (int i = 0; i < nodes.getLength(); i++) {
-
-                            Node imported = currentDoc.importNode(nodes.item(i), true);
-                            XPathExpression identifierExpression = xpath.compile("metadataHeaderInfo/metadataRecordIdentifier/text()");
-                            String identifier = (String) identifierExpression.evaluate(imported, XPathConstants.STRING);
-
-//                            if (identifier == null || identifier.isEmpty() || identifier.contains("dedup")) {
-//                                System.out.println("MetadataDocument Identifier " + identifier +  " is empty or null or dedup. Skipping current document.");
-//                                continue;
-//                            } else {
-//                                System.out.println(identifier);
-
-                            XPathExpression distributionListExpression = xpath.compile("document/publication/distributions/documentDistributionInfo/hashkey");
-                            NodeList hashkeys = (NodeList) distributionListExpression.evaluate(imported, XPathConstants.NODESET);
-
-//                                showXML(imported);
-
-                            boolean hasFulltext = false;
-
-                            if (hashkeys != null && hashkeys.getLength() > 0) {
-                                for (int j = 0; j < hashkeys.getLength(); j++) {
-                                    Node hashkey = hashkeys.item(j);
-                                    if (hashkey != null) {
-                                        hasFulltext = true;
-                                        System.out.println(hashkey.getTextContent());
-                                    }
-                                }
-                                countFulltext++;
-                            } else {
-                                hasFulltext = false;
-                            }
-
-                            System.out.println(hasFulltext);
-                            XPathExpression abstractListExpression = xpath.compile("document/publication/abstracts/abstract");
-                            NodeList abstracts = (NodeList) abstractListExpression.evaluate(imported, XPathConstants.NODESET);
-
-                            if (abstracts != null) {
-                                StringBuilder abstractText = new StringBuilder();
-                                for (int j = 0; j < abstracts.getLength(); j++) {
-                                    Node node = abstracts.item(j);
-                                    if (node != null)
-                                        abstractText.append(node.getTextContent()).append("\n");
-                                }
-                                countAbstracts++;
-//                                    System.out.println(abstractText.toString());
-                            }
-//                            }
-                        }
-                        System.out.println("Fulltext: " + countFulltext);
-                        System.out.println("Abstracts : " + countAbstracts);
-                    }
-                }
-            }
-        }
-    }
-
     @Test
     @Ignore
     public void replaceFilename() {
@@ -442,6 +285,14 @@ public class FetchMetadataTaskTest {
         filename = filename.replaceAll(invalidCharacters, ".");
 
         System.out.println("filename after:\n" + filename);
+    }
+
+    @Test
+    @Ignore
+    public void contentServiceStatusTest() {
+        ServiceStatus serviceStatus = controller.status();
+
+        System.out.println(serviceStatus.getContentConnectors());
     }
 
     private void showXML(Node node) throws TransformerException, IOException {

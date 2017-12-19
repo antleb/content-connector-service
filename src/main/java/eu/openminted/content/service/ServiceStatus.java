@@ -1,17 +1,22 @@
 package eu.openminted.content.service;
 
-import eu.openminted.content.connector.ContentConnector;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * Facility that contains information for the Content Service
+ *
+ * provides a dictionary of content connectors and a value if they are online or offline
+ * provides a number of the maximum number of documents that can be downloaded
+ */
 
 @Component
 public class ServiceStatus {
     private int maxFulltextDocuments;
 
-    @Autowired(required = false)
-    private List<ContentConnector> contentConnectors;
+    private Map<String, Boolean> contentConnectors;
 
     public ServiceStatus() {
     }
@@ -22,5 +27,16 @@ public class ServiceStatus {
 
     public void setMaxFulltextDocuments(int maxFulltextDocuments) {
         this.maxFulltextDocuments = maxFulltextDocuments;
+    }
+
+    public Map<String, Boolean> getContentConnectors() {
+        if (this.contentConnectors == null)
+            this.contentConnectors = new HashMap<>();
+
+        return contentConnectors;
+    }
+
+    public void setContentConnectors(Map<String, Boolean> contentConnectors) {
+        this.contentConnectors = contentConnectors;
     }
 }

@@ -8,16 +8,20 @@ import eu.openminted.content.connector.utils.faceting.OMTDFacetLabels;
 import eu.openminted.content.service.messages.JMSProducer;
 import eu.openminted.registry.core.domain.Facet;
 import eu.openminted.registry.core.domain.Value;
+import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 import static eu.openminted.content.connector.utils.SearchExtensions.merge;
 
 @Component
 public class ContentServiceImpl implements ContentService {
+
+    private static Logger log = Logger.getLogger(ContentConnector.class);
 
     @org.springframework.beans.factory.annotation.Value("${content.limit:0}")
     private Integer contentLimit;
@@ -105,11 +109,26 @@ public class ContentServiceImpl implements ContentService {
 
     /**
      *  Standard method that returns the status of the current service
-     * @return ServiceStatus
+     *
+     * @return ServiceStatus object
      */
     @Override
     public ServiceStatus status() {
         serviceStatus.setMaxFulltextDocuments(contentLimit);
+
+        for (ContentConnector connector : contentConnectors) {
+
+            try {
+                SearchResult searchResult = connector.search(new Query("*", new HashMap<>(), new ArrayList<>(), 0, 1));
+                if (searchResult != null && searchResult.getTotalHits() > 0) {
+                    serviceStatus.getContentConnectors().put(connector.getSourceName(), true);
+                    System.out.println(connector.getSourceName() + ": " + searchResult.getTotalHits());
+                } else
+                    serviceStatus.getContentConnectors().put(connector.getSourceName(), false);
+            } catch (Exception e) {
+                log.error("Error retrieving content connector", e);
+            }
+        }
         return serviceStatus;
     }
 
