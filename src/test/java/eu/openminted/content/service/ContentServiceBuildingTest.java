@@ -12,6 +12,8 @@ import eu.openminted.content.service.process.FetchMetadataTask;
 import eu.openminted.content.service.rest.ContentServiceController;
 import eu.openminted.corpus.CorpusStatus;
 import eu.openminted.registry.domain.Corpus;
+import eu.openminted.registry.domain.DocumentTypeEnum;
+import eu.openminted.registry.domain.PublicationTypeEnum;
 import eu.openminted.store.restclient.StoreRESTClient;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -90,6 +92,8 @@ public class ContentServiceBuildingTest {
 
     private Query query;
 
+
+
     @Before
     public void init() {
 
@@ -141,17 +145,23 @@ public class ContentServiceBuildingTest {
     @Test
     @Ignore
     public void testBuild() throws Exception {
+        query.setKeyword("mouse");
+
         query.setParams(new HashMap<>());
-        query.getParams().put(OMTDFacetEnum.SOURCE.value(), new ArrayList<>());
-        query.getParams().get(OMTDFacetEnum.SOURCE.value()).add("CORE");
+//        query.getParams().put(OMTDFacetEnum.SOURCE.value(), new ArrayList<>());
+//        query.getParams().get(OMTDFacetEnum.SOURCE.value()).add("CORE");
 //        query.getParams().get(OMTDFacetEnum.SOURCE.value()).add("OpenAIRE");
+
         query.getParams().put(OMTDFacetEnum.DOCUMENT_LANG.value(), new ArrayList<>());
-        query.getParams().get(OMTDFacetEnum.DOCUMENT_LANG.value()).add("Ru");
+        query.getParams().get(OMTDFacetEnum.DOCUMENT_LANG.value()).add("En");
         query.getParams().put(OMTDFacetEnum.PUBLICATION_YEAR.value(), new ArrayList<>());
-        query.getParams().get(OMTDFacetEnum.PUBLICATION_YEAR.value()).add("2010");
+        query.getParams().get(OMTDFacetEnum.PUBLICATION_YEAR.value()).add("2015");
+        query.getParams().put(OMTDFacetEnum.DOCUMENT_TYPE.value(), new ArrayList<>());
+        query.getParams().get(OMTDFacetEnum.DOCUMENT_TYPE.value()).add(omtdFacetLabels.getDocumentTypeLabelFromEnum(DocumentTypeEnum.WITH_FULL_TEXT));
+        query.getParams().put(OMTDFacetEnum.PUBLICATION_TYPE.value(), new ArrayList<>());
+        query.getParams().get(OMTDFacetEnum.PUBLICATION_TYPE.value()).add(omtdFacetLabels.getPublicationTypeLabelFromEnum(PublicationTypeEnum.RESEARCH_ARTICLE));
 
         Corpus corpus = controller.prepare(query);
-        System.out.println(corpus);
         Pattern pattern = Pattern.compile(".*archiveId=(.*)$");
         Matcher matcher = pattern.matcher(corpus.getCorpusInfo().getDatasetDistributionInfo().getDistributionLocation());
         String archiveId = "";
@@ -168,7 +178,8 @@ public class ContentServiceBuildingTest {
 
             for (ContentConnector connector : contentConnectors) {
 
-                if (!query.getParams().get(OMTDFacetEnum.SOURCE.value()).contains(connector.getSourceName())) continue;
+                if (query.getParams().get(OMTDFacetEnum.SOURCE.value()) != null)
+                    if (!query.getParams().get(OMTDFacetEnum.SOURCE.value()).contains(connector.getSourceName())) continue;
 
                 FetchMetadataTask metadataTask = new FetchMetadataTask(storeRESTClient,
                         authentication.getUserInfo().getSub(),

@@ -51,6 +51,8 @@ public class FetchMetadataTask implements Runnable {
     private CorpusBuildingState corpusBuildingState;
     private Map<String, List<String>> identifiers;
 
+    private String invalidCharacters = "[#|%|&|\\{|\\}|\\\\|<|>|*|\\?|\\/| |\\$|!|\'|\"|:|@]";
+
     private final TimerTask timerTask;
     private final long period = (long) 10000;
 
@@ -141,13 +143,22 @@ public class FetchMetadataTask implements Runnable {
         XPath xpath = XPathFactory.newInstance().newXPath();
 
         NodeList nodes = null;
-        String invalidCharacters = "[#|%|&|\\{|\\}|\\\\|<|>|*|\\?|\\/| |\\$|!|\'|\"|:|@]";
 
         Timer timer = new Timer(true);
         timer.schedule(timerTask, 0, period);
 
-        initializeCorpusBuildingState();
 
+        try {
+            if (initializeCorpusBuildingState() == 0) {
+                log.info("Closing connector " + connector.getSourceName() + "...");
+                timer.cancel();
+                return;
+            }
+        } catch (IOException e) {
+            log.info("Closing connector " + connector.getSourceName() + "...");
+            timer.cancel();
+            return;
+        }
 
         try {
             nodes = fetchNodes(dbf, xpath);
@@ -163,13 +174,6 @@ public class FetchMetadataTask implements Runnable {
             log.error("FetchMetadataTask.run-XPathExpressionException ", e);
         }
 
-        int totalFulltext = 0;
-
-        this.corpusBuildingState.setTotalFulltext(totalFulltext);
-        this.corpusBuildingState.setTotalRejected(0);
-        this.corpusBuildingState.setMetadataProgress(0);
-        this.corpusBuildingState.setFulltextProgress(0);
-
         if (nodes != null) {
             File metadataFile = new File(archivePath + "/" + archiveId + ".xml");
             File abstractFile = new File(archivePath + "/" + archiveId + ".txt");
@@ -181,11 +185,9 @@ public class FetchMetadataTask implements Runnable {
             try {
                 fetchAndStoreMetadataAndAbstracts(nodes, dbf, xpath,
                         metadataFile,
-                        abstractFile,
-                        totalFulltext,
-                        invalidCharacters);
+                        abstractFile);
 
-                fetchAndStoreFulltextDocuments(downloadFile, totalFulltext, invalidCharacters);
+                fetchAndStoreFulltextDocuments(downloadFile);
 
             } catch (FileNotFoundException e) {
                 log.error("FetchMetadataTask.run- Downloading fulltext -FileNotFoundException ", e);
@@ -202,18 +204,35 @@ public class FetchMetadataTask implements Runnable {
             }
         }
 
+        log.debug("Finally :"
+                + corpusBuildingState.getTotalHits()
+                + ", getTotalFulltext: " + corpusBuildingState.getTotalFulltext()
+                + ", getFulltextProgress: " + corpusBuildingState.getFulltextProgress()
+                + ", getMetadataProgress: " + corpusBuildingState.getMetadataProgress()
+                + ", getTotalRejected: " + corpusBuildingState.getTotalRejected()
+        );
         // Close timer for cancelling process
         timer.cancel();
     }
 
-    private void initializeCorpusBuildingState() {
+    private int initializeCorpusBuildingState() throws IOException {
         CorpusBuilderInfoModel corpusBuilderInfoModel = corpusBuilderInfoDao.find(corpusId);
         corpusBuildingState.setId(corpusId + "@" + connector.getSourceName());
         corpusBuildingState.setCurrentStatus(corpusBuilderInfoModel.getStatus());
         SearchResult searchResult = connector.search(query);
+
         if (searchResult != null) {
-            corpusBuildingState.setTotalHits(searchResult.getTotalHits());
+            this.corpusBuildingState.setTotalFulltext(0);
+            this.corpusBuildingState.setTotalRejected(0);
+            this.corpusBuildingState.setMetadataProgress(0);
+            this.corpusBuildingState.setFulltextProgress(0);
+            this.corpusBuildingState.setTotalHits(searchResult.getTotalHits());
+
+            return searchResult.getTotalHits();
         }
+
+        return 0;
+
     }
 
     private NodeList fetchNodes(DocumentBuilderFactory dbf, XPath xpath) throws ParserConfigurationException, XPathExpressionException, IOException, SAXException {
@@ -227,9 +246,8 @@ public class FetchMetadataTask implements Runnable {
                                                    DocumentBuilderFactory dbf,
                                                    XPath xpath,
                                                    File metadataFile,
-                                                   File abstractFile,
-                                                   int totalFulltext,
-                                                   String invalidCharacters) throws ParserConfigurationException {
+                                                   File abstractFile) throws ParserConfigurationException {
+        int totalFulltext = 0;
         int metadataProgress = 0;
         int totalRejected = 0;
         Document currentDoc = null;
@@ -300,11 +318,13 @@ public class FetchMetadataTask implements Runnable {
                 }
 
                 metadataProgress++;
+                corpusBuildingState.setTotalFulltext(totalFulltext);
                 corpusBuildingState.setTotalRejected(totalRejected);
                 corpusBuildingState.setMetadataProgress(metadataProgress);
                 if (metadataProgress > 0 && metadataProgress % 10 == 0) {
                     producer.sendMessage(corpusBuildingState);
                 }
+
             } catch (XPathExpressionException e) {
                 log.error("FetchMetadataTask.run-Fetching Metadata -XPathExpressionException ", e);
             } catch (IOException e) {
@@ -319,12 +339,10 @@ public class FetchMetadataTask implements Runnable {
         IOUtils.closeQuietly(inputStream);
     }
 
-    private void fetchAndStoreFulltextDocuments(File downloadFile,
-                                                int totalFulltext,
-                                                String invalidCharacters) throws IOException {
+    private void fetchAndStoreFulltextDocuments(File downloadFile) throws IOException {
         int fulltextProgress = 0;
+        int totalFulltext = corpusBuildingState.getTotalFulltext();
 
-        corpusBuildingState.setTotalFulltext(totalFulltext);
         corpusBuildingState.setCurrentStatus(CorpusStatus.PROCESSING_FULLTEXT.toString());
         producer.sendMessage(corpusBuildingState);
 

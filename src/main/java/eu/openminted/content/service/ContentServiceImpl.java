@@ -12,6 +12,7 @@ import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -39,7 +40,7 @@ public class ContentServiceImpl implements ContentService {
     private OMTDFacetLabels omtdFacetInitializer;
 
     @Override
-    public SearchResult search(Query query) {
+    public SearchResult search(Query query) throws IOException {
 
         query.setFrom(0);
         query.setTo(1);
@@ -119,14 +120,22 @@ public class ContentServiceImpl implements ContentService {
         for (ContentConnector connector : contentConnectors) {
 
             try {
-                SearchResult searchResult = connector.search(new Query("*", new HashMap<>(), new ArrayList<>(), 0, 1));
+                SearchResult searchResult;
+                try {
+                    searchResult = connector.search(new Query("*", new HashMap<>(), new ArrayList<>(), 0, 1));
+
+                } catch (IOException e ) {
+                    searchResult = null;
+                }
+
                 if (searchResult != null && searchResult.getTotalHits() > 0) {
                     serviceStatus.getContentConnectors().put(connector.getSourceName(), true);
                     System.out.println(connector.getSourceName() + ": " + searchResult.getTotalHits());
                 } else
                     serviceStatus.getContentConnectors().put(connector.getSourceName(), false);
+
             } catch (Exception e) {
-                log.error("Error retrieving content connector", e);
+                log.error("Error retrieving content connector");
             }
         }
         return serviceStatus;

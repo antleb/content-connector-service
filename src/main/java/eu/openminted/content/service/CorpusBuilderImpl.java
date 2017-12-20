@@ -178,48 +178,64 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             for (ContentConnector connector : contentConnectors) {
                 if (connectors.size() > 0 && !connectors.contains(connector.getSourceName())) continue;
 
-                SearchResult res = connector.search(tempQuery);
-                Value value = new Value();
+                try {
+                    SearchResult res = connector.search(tempQuery);
+                    Value value = new Value();
 
-                value.setValue(connector.getSourceName());
-                value.setCount(res.getTotalHits());
+                    value.setValue(connector.getSourceName());
+                    value.setCount(res.getTotalHits());
 
-                sourceFacet.getValues().add(value);
+                    sourceFacet.getValues().add(value);
 
-                merge(result, res);
+                    merge(result, res);
 
-                // Remove values with count 0 and set labels to facets
-                result.getFacets().forEach(facet -> {
-                    List<Value> valuesToRemove = new ArrayList<>();
-                    facet.getValues().forEach(value1 -> {
-                        if (value1.getCount() == 0) valuesToRemove.add(value1);
+                    // Remove values with count 0 and set labels to facets
+                    result.getFacets().forEach(facet -> {
+                        List<Value> valuesToRemove = new ArrayList<>();
+                        facet.getValues().forEach(value1 -> {
+                            if (value1.getCount() == 0) valuesToRemove.add(value1);
+                        });
+
+                        if (valuesToRemove.size() > 0) {
+                            facet.getValues().removeAll(valuesToRemove);
+                        }
+
+                        OMTDFacetEnum facetEnum = OMTDFacetEnum.fromValue(facet.getField());
+                        if (facetEnum != null)
+                            facet.setLabel(omtdFacetLabels.getFacetLabelsFromEnum(facetEnum));
                     });
 
-                    if (valuesToRemove.size() > 0) {
-                        facet.getValues().removeAll(valuesToRemove);
-                    }
-
-                    OMTDFacetEnum facetEnum = OMTDFacetEnum.fromValue(facet.getField());
-                    if (facetEnum != null)
-                        facet.setLabel(omtdFacetLabels.getFacetLabelsFromEnum(facetEnum));
-                });
-
-                sourcesBuilder.append(connector.getSourceName()).append(" and ");
+                    sourcesBuilder.append(connector.getSourceName()).append(" and ");
+                } catch (IOException e) {
+                    log.error("Connector " + connector.getSourceName() + " is unavailable");
+                    log.debug("Connector " + connector.getSourceName() + " is unavailable", e);
+                }
             }
             sourcesBuilder = sourcesBuilder.delete(sourcesBuilder.lastIndexOf(" and "), sourcesBuilder.length());
-            String connectorsToString;
+            StringBuilder connectorsToString = new StringBuilder();
 
-            if (connectors.size() > 0) {
-                connectorsToString = new ArrayList<>(connectors).toString()
-                        .replaceAll("\\[|\\]", "");
-            } else {
-                connectorsToString = contentConnectors.stream()
-                        .map(ContentConnector::getSourceName)
-                        .collect(Collectors.toList()).toString()
-                        .replaceAll("\\[|\\]", "");
+//            if (connectors.size() > 0) {
+//                String.join(", ", connectors);
+//                connectorsToString = new StringBuilder(new ArrayList<>(connectors).toString()
+//                        .replaceAll("\\[|\\]", ""));
+//            } else {
+//                connectorsToString = new StringBuilder(contentConnectors.stream()
+//                        .map(ContentConnector::getSourceName)
+//                        .collect(Collectors.toList()).toString()
+//                        .replaceAll("\\[|\\]", ""));
+//            }
+
+            for (Facet facet : result.getFacets()) {
+                if (facet.getField().equalsIgnoreCase(OMTDFacetEnum.SOURCE.value())) {
+                    for (Value value : facet.getValues()) {
+                        if (value.getCount() > 0)
+                            connectorsToString.append(value.getValue()).append(", ");
+                    }
+                }
             }
 
-            resourceNameUsageDescription = resourceNameUsageDescription.replaceAll("\\[connectors\\]", connectorsToString);
+            resourceNameUsageDescription = resourceNameUsageDescription.replaceAll("\\[connectors\\]", connectorsToString.toString().replaceAll(", $", ""));
+            log.info(resourceNameUsageDescription);
             ResourceName resourceName = new ResourceName();
             resourceName.setLang("en");
             resourceName.setValue(resourceNameUsageDescription);
@@ -281,27 +297,59 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                 log.info(corpus);
                 corpusBuilderInfoDao.insert(metadataIdentifier.getValue(), authentication.getSub(), queryString, corpus, CorpusStatus.INITIATING, archiveID);
 
-                for (ContentConnector connector : contentConnectors) {
-                    if (connectors.size() > 0 && !connectors.contains(connector.getSourceName())) continue;
+                for (Facet facet : result.getFacets()) {
+                    if (facet.getField().equalsIgnoreCase(OMTDFacetEnum.SOURCE.value())) {
 
-                    CorpusBuildingState corpusBuildingState = new CorpusBuildingState();
-                    corpusBuildingState.setId(metadataIdentifier.getValue() + "@" + connector.getSourceName());
-                    corpusBuildingState.setToken(authentication.getSub());
-                    corpusBuildingState.setCurrentStatus(CorpusStatus.INITIATING.toString());
-                    corpusBuildingState.setConnector(connector.getSourceName());
+                        for (Value value : facet.getValues()) {
+//                            if (corpusInfo.getDatasetDistributionInfo() != null) {
+//
+//                                for (SizeInfo sizeInfo : corpusInfo.getDatasetDistributionInfo().getSizes()) {
+//                                    if (sizeInfo.getSizeUnit() == SizeUnitEnum.TEXTS || sizeInfo.getSizeUnit() == SizeUnitEnum.FILES)
+//                                        totalHits += Integer.parseInt(sizeInfo.getSize());
+//                                }
+//                            }
 
-                    int totalHits = 0;
-
-                    if (corpusInfo.getDatasetDistributionInfo() != null) {
-
-                        for (SizeInfo sizeInfo : corpusInfo.getDatasetDistributionInfo().getSizes()) {
-                            if (sizeInfo.getSizeUnit() == SizeUnitEnum.TEXTS || sizeInfo.getSizeUnit() == SizeUnitEnum.FILES)
-                                totalHits += Integer.parseInt(sizeInfo.getSize());
+                            if (value.getCount() > 0) {
+                                CorpusBuildingState corpusBuildingState = new CorpusBuildingState();
+                                corpusBuildingState.setTotalHits(value.getCount());
+                                corpusBuildingState.setId(metadataIdentifier.getValue() + "@" + value.getValue());
+                                corpusBuildingState.setToken(authentication.getSub());
+                                corpusBuildingState.setCurrentStatus(CorpusStatus.INITIATING.toString());
+                                corpusBuildingState.setConnector(value.getValue());
+                                log.info("Sending Corpus Building state to JMS for connector " + value.getValue());
+                                producer.sendMessage(corpusBuildingState);
+                            }
                         }
                     }
-                    corpusBuildingState.setTotalHits(totalHits);
-                    producer.sendMessage(corpusBuildingState);
                 }
+
+
+//                for (ContentConnector connector : contentConnectors) {
+//                    if (connectors.size() > 0 && !connectors.contains(connector.getSourceName())) continue;
+//                    int totalHits = 0;
+//
+//
+//                    if (corpusInfo.getDatasetDistributionInfo() != null) {
+//
+//                        for (SizeInfo sizeInfo : corpusInfo.getDatasetDistributionInfo().getSizes()) {
+//                            if (sizeInfo.getSizeUnit() == SizeUnitEnum.TEXTS || sizeInfo.getSizeUnit() == SizeUnitEnum.FILES)
+//                                totalHits += Integer.parseInt(sizeInfo.getSize());
+//                        }
+//                    }
+//
+//
+//
+//                    if (totalHits > 0) {
+//                        CorpusBuildingState corpusBuildingState = new CorpusBuildingState();
+//                        corpusBuildingState.setTotalHits(totalHits);
+//                        corpusBuildingState.setId(metadataIdentifier.getValue() + "@" + connector.getSourceName());
+//                        corpusBuildingState.setToken(authentication.getSub());
+//                        corpusBuildingState.setCurrentStatus(CorpusStatus.INITIATING.toString());
+//                        corpusBuildingState.setConnector(connector.getSourceName());
+//                        log.info("\n\n\nSending Corpus Building state to JMS for connector " + connector.getSourceName() + "\n\n\n");
+//                        producer.sendMessage(corpusBuildingState);
+//                    }
+//                }
             } catch (ClassCastException e) {
                 log.error("User is not authenticated to build corpus", e);
             } catch (JsonProcessingException e) {

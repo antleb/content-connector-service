@@ -5,49 +5,29 @@ import eu.openminted.content.connector.Query;
 import eu.openminted.content.connector.SearchResult;
 import eu.openminted.content.connector.utils.faceting.OMTDFacetEnum;
 import eu.openminted.content.connector.utils.faceting.OMTDFacetLabels;
-import eu.openminted.content.service.OmtdNamespace;
 import eu.openminted.content.service.rest.ContentServiceController;
 import eu.openminted.registry.core.domain.Facet;
 import eu.openminted.registry.core.domain.Value;
-import eu.openminted.registry.domain.Corpus;
+import eu.openminted.registry.domain.DocumentTypeEnum;
 import eu.openminted.registry.domain.PublicationTypeEnum;
 import eu.openminted.registry.domain.RightsStatementEnum;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mitre.openid.connect.client.OIDCAuthenticationFilter;
-import org.mitre.openid.connect.client.OIDCAuthenticationProvider;
-import org.mitre.openid.connect.model.DefaultUserInfo;
-import org.mitre.openid.connect.model.OIDCAuthenticationToken;
-import org.mitre.openid.connect.model.UserInfo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
-import org.w3c.dom.Document;
 import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
 
-import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
-import javax.xml.xpath.XPath;
-import javax.xml.xpath.XPathConstants;
-import javax.xml.xpath.XPathExpression;
-import javax.xml.xpath.XPathFactory;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -91,7 +71,7 @@ public class ContentServiceBrowseTest {
 
     @Test
     @Ignore
-    public void testUnwantedValues() {
+    public void testUnwantedValues() throws IOException {
         query.setParams(new HashMap<>());
         query.getParams().put(OMTDFacetEnum.DOCUMENT_LANG.value(), new ArrayList<>());
         query.getParams().get(OMTDFacetEnum.DOCUMENT_LANG.value()).add("Nl");
@@ -104,7 +84,7 @@ public class ContentServiceBrowseTest {
 
     @Test
     @Ignore
-    public void testPublicationValues() {
+    public void testPublicationValues() throws IOException {
 
         query.setParams(new HashMap<>());
         query.getParams().put(OMTDFacetEnum.PUBLICATION_TYPE.value(), new ArrayList<>());
@@ -119,7 +99,7 @@ public class ContentServiceBrowseTest {
 
     @Test
     @Ignore
-    public void testRightsValues() {
+    public void testRightsValues() throws IOException {
 
         query.setParams(new HashMap<>());
         query.getParams().put(OMTDFacetEnum.RIGHTS.value(), new ArrayList<>());
@@ -134,7 +114,7 @@ public class ContentServiceBrowseTest {
 
     @Test
     @Ignore
-    public void testLanguageValues() {
+    public void testLanguageValues() throws IOException {
         query.setParams(new HashMap<>());
         query.getParams().put(OMTDFacetEnum.DOCUMENT_LANG.value(), new ArrayList<>());
         query.getParams().get(OMTDFacetEnum.DOCUMENT_LANG.value()).add("Nl");
@@ -186,7 +166,7 @@ public class ContentServiceBrowseTest {
 
     @Test
     @Ignore
-    public void testPublicationType() {
+    public void testPublicationType() throws IOException {
         query.setParams(new HashMap<>());
         query.getParams().put(OMTDFacetEnum.SOURCE.value(), new ArrayList<>());
         query.getParams().get(OMTDFacetEnum.SOURCE.value()).add("CORE");
@@ -206,7 +186,7 @@ public class ContentServiceBrowseTest {
 
     @Test
     @Ignore
-    public void testBrowse() {
+    public void testBrowse() throws IOException {
         query.setParams(new HashMap<>());
         query.getParams().put("source", new ArrayList<>());
         query.getParams().get("source").add("OpenAIRE");
@@ -239,7 +219,7 @@ public class ContentServiceBrowseTest {
 
     @Test
     @Ignore
-    public void testBrowseOnlyCORE() {
+    public void testBrowseOnlyCORE() throws IOException {
         query.setParams(new HashMap<>());
         query.getParams().put("source", new ArrayList<>());
         query.getParams().get("source").add("CORE");
@@ -293,6 +273,49 @@ public class ContentServiceBrowseTest {
         ServiceStatus serviceStatus = controller.status();
 
         System.out.println(serviceStatus.getContentConnectors());
+    }
+
+
+    @Test
+    @Ignore
+    public void testPublicationAndDocumentTypes() throws IOException {
+        query.setKeyword("mouse");
+        query.setParams(new HashMap<>());
+        query.getParams().put(OMTDFacetEnum.DOCUMENT_LANG.value(), new ArrayList<>());
+        query.getParams().get(OMTDFacetEnum.DOCUMENT_LANG.value()).add("En");
+        query.getParams().put(OMTDFacetEnum.PUBLICATION_YEAR.value(), new ArrayList<>());
+        query.getParams().get(OMTDFacetEnum.PUBLICATION_YEAR.value()).add("2015");
+        query.getParams().put(OMTDFacetEnum.DOCUMENT_TYPE.value(), new ArrayList<>());
+        query.getParams().get(OMTDFacetEnum.DOCUMENT_TYPE.value()).add(omtdFacetLabels.getDocumentTypeLabelFromEnum(DocumentTypeEnum.WITH_FULL_TEXT));
+        query.getParams().put(OMTDFacetEnum.PUBLICATION_TYPE.value(), new ArrayList<>());
+        query.getParams().get(OMTDFacetEnum.PUBLICATION_TYPE.value()).add(omtdFacetLabels.getPublicationTypeLabelFromEnum(PublicationTypeEnum.RESEARCH_ARTICLE));
+
+        SearchResult searchResult = controller.browse(query);
+
+        if (searchResult.getPublications() != null) {
+            for (String metadataRecord : searchResult.getPublications()) {
+                System.out.println(metadataRecord);
+            }
+
+            for (Facet facet : searchResult.getFacets()) {
+                int totalHits = 0;
+                System.out.println("facet:{" + facet.getLabel() + "[");
+                for (Value value : facet.getValues()) {
+                    System.out.println("\t{" + value.getValue() + ":" + value.getCount() + "}");
+                    totalHits += value.getCount();
+                }
+                System.out.println("]}");
+                assert totalHits == searchResult.getTotalHits();
+            }
+
+            System.out.println("reading " + searchResult.getPublications().size() +
+                    " publications from " + searchResult.getFrom() +
+                    " to " + searchResult.getTo() +
+                    " out of " + searchResult.getTotalHits() + " total hits.");
+        } else {
+            System.out.println("Could not find any result with these parameters or keyword");
+        }
+
     }
 
     private void showXML(Node node) throws TransformerException, IOException {

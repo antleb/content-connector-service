@@ -46,7 +46,7 @@ public class ContentServiceController {
      * @return the SearchResult of the current query
      */
     @RequestMapping(value = "/content/browse", method = RequestMethod.GET, headers = "Accept=application/json")
-    public SearchResult browse(@RequestParam(value = "facets") String facets) {
+    public SearchResult browse(@RequestParam(value = "facets") String facets) throws IOException {
 
         List<String> facetList = Arrays.asList(facets.split(","));
         return contentService.search(new Query("", new HashMap<>(), facetList, 0, 10));
@@ -58,7 +58,7 @@ public class ContentServiceController {
      * @return the SearchResult of the current query
      */
     @RequestMapping(value = "/content/browse", method = RequestMethod.POST, headers = "Accept=application/json")
-    public SearchResult browse(@RequestBody Query query) {
+    public SearchResult browse(@RequestBody Query query) throws IOException {
 
         if (query == null) throw new ResourceNotFoundException();
         return contentService.search(query);
