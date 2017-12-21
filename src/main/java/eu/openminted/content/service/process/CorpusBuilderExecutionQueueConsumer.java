@@ -75,7 +75,7 @@ public class CorpusBuilderExecutionQueueConsumer {
 
                     this.queueTasksThreadPoolExecutor.execute(() -> {
                         if (contentConnectors != null) {
-                            CorpusBuilderInfoModel corpusBuilderInfoModel = null;
+                            CorpusBuilderInfoModel corpusBuilderInfoModel;
                             try {
                                 corpusBuilderInfoModel = corpusBuilderInfoDao.find(corpusId);
 
@@ -95,9 +95,7 @@ public class CorpusBuilderExecutionQueueConsumer {
                                 if (query.getParams().containsKey("source")
                                         && query.getParams().get("source") != null
                                         && query.getParams().get("source").size() > 0) {
-                                    query.getParams().get("source").forEach(s -> {
-                                        connectors.add(s.toLowerCase());
-                                    });
+                                    query.getParams().get("source").forEach(s -> connectors.add(s.toLowerCase()));
                                 }
 
                                 for (ContentConnector connector : contentConnectors) {
@@ -141,8 +139,10 @@ public class CorpusBuilderExecutionQueueConsumer {
                                     try {
                                         future.get();
                                     } catch (InterruptedException e) {
+                                        corpusBuilderInfoDao.updateStatus(corpusBuilderInfoModel.getId(), CorpusStatus.FAILED);
                                         log.info("Thread Interrupted or error in execution");
                                     } catch (Exception e) {
+                                        corpusBuilderInfoDao.updateStatus(corpusBuilderInfoModel.getId(), CorpusStatus.FAILED);
                                         log.error("CorpusBuilderImpl.buildCorpus - Inner exception at the future.get method", e);
                                     }
                                 }
@@ -155,7 +155,7 @@ public class CorpusBuilderExecutionQueueConsumer {
                             String text;
                             if (corpusBuilderInfoModel != null
                                     && !(corpusBuilderInfoModel.getStatus().equalsIgnoreCase(CorpusStatus.CANCELED.toString())
-//                                    || corpusBuilderInfoModel.getStatus().equalsIgnoreCase(CorpusStatus.FAILED.toString())
+                                    || corpusBuilderInfoModel.getStatus().equalsIgnoreCase(CorpusStatus.FAILED.toString())
                                     || corpusBuilderInfoModel.getStatus().equalsIgnoreCase(CorpusStatus.DELETED.toString()))) {
 
                                 storeRESTClient.finalizeArchive(corpusBuilderInfoModel.getArchiveId());
@@ -168,7 +168,7 @@ public class CorpusBuilderExecutionQueueConsumer {
                             } else {
                                 text = "Something went wrong and your corpus building with corpusId " + corpusId + " has been interrupted!\n";
 
-                                corpusBuilderInfoDao.updateStatus(corpusBuilderInfoModel.getId(), CorpusStatus.CANCELED);
+                                corpusBuilderInfoDao.updateStatus(corpusBuilderInfoModel.getId(), CorpusStatus.FAILED);
                             }
                             if (!corpus.getCorpusInfo().getContactInfo().getContactPoint().isEmpty()) {
                                 EmailMessage emailMessage = new EmailMessage();

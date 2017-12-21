@@ -137,11 +137,11 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
         Corpus corpusMetadata = new Corpus();
         String queryString = "";
-        String descriptionString = "A corpus generated automatically by [user_name] " +
-                "on [creation_date] via OpenMinTeD services. " +
-                "The corpus includes [number_of] publications from [source] in [language]";
+        String descriptionString = "A corpus generated automatically by USER_NAME " +
+                "on CREATION_DATE via OpenMinTeD services. " +
+                "The corpus includes NUMBER_OF publications from SOURCES in LANGUAGES";
 
-        String resourceNameUsageDescription = "OpenMinTeD subset of [connectors] publications";
+        String resourceNameUsageDescription = "OpenMinTeD subset of CONNECTORS publications";
         StringBuilder sourcesBuilder = new StringBuilder();
 
         // tempQuery is used to import necessary information about the metadata and include them into the new corpus
@@ -234,7 +234,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                 }
             }
 
-            resourceNameUsageDescription = resourceNameUsageDescription.replaceAll("\\[connectors\\]", connectorsToString.toString().replaceAll(", $", ""));
+            resourceNameUsageDescription = resourceNameUsageDescription.replaceAll("CONNECTORS", connectorsToString.toString().replaceAll(", $", ""));
             log.info(resourceNameUsageDescription);
             ResourceName resourceName = new ResourceName();
             resourceName.setLang("en");
@@ -316,7 +316,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                                 corpusBuildingState.setToken(authentication.getSub());
                                 corpusBuildingState.setCurrentStatus(CorpusStatus.INITIATING.toString());
                                 corpusBuildingState.setConnector(value.getValue());
-                                log.info("Sending Corpus Building state to JMS for connector " + value.getValue());
+                                log.info("Sending Corpus Building state to JMS for connector " + value.getValue() + " with " + value.getCount() + " results...");
                                 producer.sendMessage(corpusBuildingState);
                             }
                         }
@@ -379,8 +379,8 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         String currentDescription = descriptionString;
         int publicationsCounter = 0;
         int languagesCounter = 0;
-        currentDescription = currentDescription.replaceAll("\\[creation_date\\]", new java.util.Date().toString());
-        currentDescription = currentDescription.replaceAll("\\[source\\]", sourcesBuilder.toString());
+        currentDescription = currentDescription.replaceAll("CREATION_DATE", new java.util.Date().toString());
+        currentDescription = currentDescription.replaceAll("SOURCES", sourcesBuilder.toString());
 
         for (Value value : facet.getValues()) {
             if (value.getCount() > 0) {
@@ -400,8 +400,8 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             }
         }
 
-        currentDescription = currentDescription.replaceAll("\\[number_of\\]", "" + publicationsCounter);
-        currentDescription = currentDescription.replaceAll("\\[language\\]", languagesCounter + " languages");
+        currentDescription = currentDescription.replaceAll("NUMBER_OF", "" + publicationsCounter);
+        currentDescription = currentDescription.replaceAll("LANGUAGES", languagesCounter + " languages");
 
         description.setValue(currentDescription);
         corpusInfo.getIdentificationInfo().getDescriptions().add(description);
@@ -601,7 +601,6 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         String corpusId = corpusMetadata.getMetadataHeaderInfo().getMetadataRecordIdentifier().getValue();
 
         if (contentConnectors != null) {
-            corpora.add(corpusMetadata);
             corpusBuilderInfoDao.updateStatus(corpusId, CorpusStatus.SUBMITTED);
             CorpusBuilderInfoModel corpusBuilderInfoModel = corpusBuilderInfoDao.find(corpusId);
             Query query = new ObjectMapper().readValue(corpusBuilderInfoModel.getQuery(), Query.class);
@@ -632,6 +631,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                 corpusBuildingState.setTotalHits(totalHits);
                 producer.sendMessage(corpusBuildingState);
             }
+            corpora.add(corpusMetadata);
         }
     }
 
@@ -676,8 +676,8 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
         for (Description description : corpus.getCorpusInfo().getIdentificationInfo().getDescriptions()) {
             if (username != null && !username.isEmpty())
-                description.setValue(description.getValue().replaceAll("\\[user_name\\]", username));
-            else description.setValue(description.getValue().replaceAll("\\[user_name\\]", "unknown"));
+                description.setValue(description.getValue().replaceAll("USER_NAME", username));
+            else description.setValue(description.getValue().replaceAll("USER_NAME", "unknown"));
         }
     }
 

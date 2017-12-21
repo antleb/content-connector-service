@@ -51,7 +51,7 @@ public class FetchMetadataTask implements Runnable {
     private CorpusBuildingState corpusBuildingState;
     private Map<String, List<String>> identifiers;
 
-    private String invalidCharacters = "[#|%|&|\\{|\\}|\\\\|<|>|*|\\?|\\/| |\\$|!|\'|\"|:|@]";
+    private String invalidCharacters = "[#|%&{}\\\\<>*?/ $!\'\":@\\[\\]]";
 
     private final TimerTask timerTask;
     private final long period = (long) 10000;
@@ -117,7 +117,11 @@ public class FetchMetadataTask implements Runnable {
             public void run() {
                 CorpusBuilderInfoModel corpusBuilderInfoModel = corpusBuilderInfoDao.find(corpusId);
                 if (corpusBuilderInfoModel != null
-                        && corpusBuilderInfoModel.getStatus().equalsIgnoreCase(CorpusStatus.CANCELED.toString())) {
+                        && (
+                                corpusBuilderInfoModel.getStatus().equalsIgnoreCase(CorpusStatus.CANCELED.toString())
+                                        || corpusBuilderInfoModel.getStatus().equalsIgnoreCase(CorpusStatus.FAILED.toString())
+                                        || corpusBuilderInfoModel.getStatus().equalsIgnoreCase(CorpusStatus.EMPTY.toString()))
+                        ) {
                     IOUtils.closeQuietly(inputStream);
                     isInterrupted = true;
                 }
@@ -147,21 +151,26 @@ public class FetchMetadataTask implements Runnable {
         Timer timer = new Timer(true);
         timer.schedule(timerTask, 0, period);
 
-
         try {
+
             if (initializeCorpusBuildingState() == 0) {
-                log.info("Closing connector " + connector.getSourceName() + "...");
-                timer.cancel();
-                return;
+
+                log.info("Connector " + connector.getSourceName() + " doesn't contain any publications...");
+                corpusBuildingState.setCurrentStatus(CorpusStatus.EMPTY.toString());
+                producer.sendMessage(corpusBuildingState);
+                Thread.currentThread().interrupt();
             }
         } catch (IOException e) {
-            log.info("Closing connector " + connector.getSourceName() + "...");
-            timer.cancel();
-            return;
+
+            log.info("Failed to connect to connector " + connector.getSourceName() + "...");
+            corpusBuildingState.setCurrentStatus(CorpusStatus.FAILED.toString());
+            producer.sendMessage(corpusBuildingState);
+            Thread.currentThread().interrupt();
         }
 
         try {
-            nodes = fetchNodes(dbf, xpath);
+            if (!isInterrupted)
+                nodes = fetchNodes(dbf, xpath);
         } catch (ParserConfigurationException e) {
             log.error("FetchMetadataTask.run-ParserConfigurationException ", e);
         } catch (IOException e) {
@@ -212,6 +221,8 @@ public class FetchMetadataTask implements Runnable {
                 + ", getTotalRejected: " + corpusBuildingState.getTotalRejected()
         );
         // Close timer for cancelling process
+
+        log.info("Closing connector " + connector.getSourceName() + "...");
         timer.cancel();
     }
 
@@ -322,6 +333,15 @@ public class FetchMetadataTask implements Runnable {
                 corpusBuildingState.setTotalRejected(totalRejected);
                 corpusBuildingState.setMetadataProgress(metadataProgress);
                 if (metadataProgress > 0 && metadataProgress % 10 == 0) {
+                    log.info("Sending status: " + corpusBuildingState.getConnector() + ", metadata:"
+                            + corpusBuildingState.getMetadataProgress()
+                            + "/"
+                            + corpusBuildingState.getTotalHits()
+                            + ", rejected: "
+                            + corpusBuildingState.getTotalRejected()
+                            + ", fulltext: "
+                            + corpusBuildingState.getFulltextProgress()
+                            + "/" + corpusBuildingState.getTotalFulltext());
                     producer.sendMessage(corpusBuildingState);
                 }
 
@@ -430,6 +450,15 @@ public class FetchMetadataTask implements Runnable {
                             fulltextProgress++;
                             corpusBuildingState.setFulltextProgress(fulltextProgress);
                             if (totalFulltext > 0 && fulltextProgress % 10 == 0) {
+                                log.info("Sending status: " + corpusBuildingState.getConnector() + ", metadata:"
+                                        + corpusBuildingState.getMetadataProgress()
+                                        + "/"
+                                        + corpusBuildingState.getTotalHits()
+                                        + ", rejected: "
+                                        + corpusBuildingState.getTotalRejected()
+                                        + ", fulltext: "
+                                        + corpusBuildingState.getFulltextProgress()
+                                        + "/" + corpusBuildingState.getTotalFulltext());
                                 producer.sendMessage(corpusBuildingState);
                             }
                         }
