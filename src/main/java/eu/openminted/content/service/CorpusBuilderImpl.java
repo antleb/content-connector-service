@@ -141,7 +141,6 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                 "on CREATION_DATE via OpenMinTeD services. " +
                 "The corpus includes NUMBER_OF publications from SOURCES in LANGUAGES";
 
-        String resourceNameUsageDescription = "OpenMinTeD subset of CONNECTORS publications";
         StringBuilder sourcesBuilder = new StringBuilder();
 
         // tempQuery is used to import necessary information about the metadata and include them into the new corpus
@@ -212,7 +211,6 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                 }
             }
             sourcesBuilder = sourcesBuilder.delete(sourcesBuilder.lastIndexOf(" and "), sourcesBuilder.length());
-            StringBuilder connectorsToString = new StringBuilder();
 
 //            if (connectors.size() > 0) {
 //                String.join(", ", connectors);
@@ -224,23 +222,6 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 //                        .collect(Collectors.toList()).toString()
 //                        .replaceAll("\\[|\\]", ""));
 //            }
-
-            for (Facet facet : result.getFacets()) {
-                if (facet.getField().equalsIgnoreCase(OMTDFacetEnum.SOURCE.value())) {
-                    for (Value value : facet.getValues()) {
-                        if (value.getCount() > 0)
-                            connectorsToString.append(value.getValue()).append(", ");
-                    }
-                }
-            }
-
-            resourceNameUsageDescription = resourceNameUsageDescription.replaceAll("CONNECTORS", connectorsToString.toString().replaceAll(", $", ""));
-            log.info(resourceNameUsageDescription);
-            ResourceName resourceName = new ResourceName();
-            resourceName.setLang("en");
-            resourceName.setValue(resourceNameUsageDescription);
-            identificationInfo.getResourceNames().add(resourceName);
-            corpusInfo.setIdentificationInfo(identificationInfo);
         }
 
         result.getFacets().add(sourceFacet);
@@ -296,6 +277,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                 String corpus = objectMapper.writeValueAsString(corpusMetadata);
                 log.info(corpus);
                 corpusBuilderInfoDao.insert(metadataIdentifier.getValue(), authentication.getSub(), queryString, corpus, CorpusStatus.INITIATING, archiveID);
+                StringBuilder connectorsToString = new StringBuilder();
 
                 for (Facet facet : result.getFacets()) {
                     if (facet.getField().equalsIgnoreCase(OMTDFacetEnum.SOURCE.value())) {
@@ -310,6 +292,8 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 //                            }
 
                             if (value.getCount() > 0) {
+                                connectorsToString.append(value.getValue()).append(", ");
+
                                 CorpusBuildingState corpusBuildingState = new CorpusBuildingState();
                                 corpusBuildingState.setTotalHits(value.getCount());
                                 corpusBuildingState.setId(metadataIdentifier.getValue() + "@" + value.getValue());
@@ -322,6 +306,15 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                         }
                     }
                 }
+
+                String resourceNameUsageDescription = "OpenMinTeD subset of CONNECTORS publications";
+                resourceNameUsageDescription = resourceNameUsageDescription.replaceAll("CONNECTORS", connectorsToString.toString().replaceAll(", $", ""));
+                log.info(resourceNameUsageDescription);
+                ResourceName resourceName = new ResourceName();
+                resourceName.setLang("en");
+                resourceName.setValue(resourceNameUsageDescription);
+                identificationInfo.getResourceNames().add(resourceName);
+                corpusInfo.setIdentificationInfo(identificationInfo);
 
 
 //                for (ContentConnector connector : contentConnectors) {

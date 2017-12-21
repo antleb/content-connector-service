@@ -51,7 +51,7 @@ public class FetchMetadataTask implements Runnable {
     private CorpusBuildingState corpusBuildingState;
     private Map<String, List<String>> identifiers;
 
-    private String invalidCharacters = "[#|%&{}\\\\<>*?/ $!\'\":@\\[\\]]";
+    private String invalidCharacters = "[#\\|%&{}\\\\<>*?/ $!\'\":@\\[\\]]";
 
     private final TimerTask timerTask;
     private final long period = (long) 10000;
@@ -183,7 +183,7 @@ public class FetchMetadataTask implements Runnable {
             log.error("FetchMetadataTask.run-XPathExpressionException ", e);
         }
 
-        if (nodes != null) {
+        if (nodes != null && nodes.getLength() > 0) {
             File metadataFile = new File(archivePath + "/" + archiveId + ".xml");
             File abstractFile = new File(archivePath + "/" + archiveId + ".txt");
             File downloadFile = new File(archivePath + "/" + archiveId);
