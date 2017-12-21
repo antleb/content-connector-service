@@ -149,13 +149,19 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         DatasetDistributionInfo datasetDistributionInfo = new DatasetDistributionInfo();
         IdentificationInfo identificationInfo = new IdentificationInfo();
         ResourceCreationInfo resourceCreationInfo = new ResourceCreationInfo();
+        Description description = new Description();
+
 
         // corpusInfo elements
         corpusInfo.setDatasetDistributionInfo(datasetDistributionInfo);
-        corpusInfo.setResourceCreationInfo(resourceCreationInfo);
         corpusInfo.setIdentificationInfo(identificationInfo);
+        corpusInfo.setResourceCreationInfo(resourceCreationInfo);
 
-        corpusInfo.getIdentificationInfo().setResourceNames(new ArrayList<>());
+        // description
+        description.setLang("en");
+        description.setValue(descriptionString);
+        corpusInfo.getIdentificationInfo().getDescriptions().add(description);
+
 
         // metadataHeaderInfo elements
         MetadataIdentifier metadataIdentifier = createMetadataIdentifier(metadataHeaderInfo);
@@ -295,8 +301,6 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
                 String resourceNameUsageDescription = "OpenMinTeD subset of CONNECTORS publications";
                 resourceNameUsageDescription = resourceNameUsageDescription.replaceAll("CONNECTORS", connectorsToString.toString().replaceAll(", $", ""));
-
-                log.info(resourceNameUsageDescription);
                 ResourceName resourceName = new ResourceName();
                 resourceName.setLang("en");
                 resourceName.setValue(resourceNameUsageDescription);
@@ -305,7 +309,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                 for (Facet facet : result.getFacets()) {
                     // language
                     if (facet.getField().equalsIgnoreCase(OMTDFacetEnum.DOCUMENT_LANG.value())) {
-                        addCorpusLanguageFields(facet, corpusInfo, descriptionString, connectorsToString, result);
+                        addCorpusLanguageFields(facet, corpusInfo, connectorsToString, result);
                     }
 
                     // licence
@@ -354,7 +358,6 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
     private void addCorpusLanguageFields(Facet facet,
                                          CorpusInfo corpusInfo,
-                                         String descriptionString,
                                          StringBuilder sourcesBuilder,
                                          SearchResult result) {
         CorpusTextPartInfo corpusTextPartInfo = new CorpusTextPartInfo();
@@ -366,13 +369,8 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
 //        corpusInfo.getCorpusSubtypeSpecificInfo().getRawCorpusInfo().set().getCorpusTextParts().add(corpusTextPartInfo);
 
-        Description description = new Description();
-        description.setLang("en");
-        String currentDescription = descriptionString;
         int publicationsCounter = 0;
         int languagesCounter = 0;
-        currentDescription = currentDescription.replaceAll("CREATION_DATE", new java.util.Date().toString());
-        currentDescription = currentDescription.replaceAll("SOURCES", sourcesBuilder.toString().replaceAll(", $", ""));
 
         for (Value value : facet.getValues()) {
             if (value.getCount() > 0) {
@@ -392,12 +390,12 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             }
         }
 
-        currentDescription = currentDescription.replaceAll("NUMBER_OF", "" + publicationsCounter);
-        currentDescription = currentDescription.replaceAll("LANGUAGES", languagesCounter + " languages");
-
-        description.setValue(currentDescription);
-        System.out.println(corpusInfo.getIdentificationInfo());
-        corpusInfo.getIdentificationInfo().getDescriptions().add(description);
+        for (Description description : corpusInfo.getIdentificationInfo().getDescriptions()) {
+            description.setValue(description.getValue().replaceAll("CREATION_DATE", new java.util.Date().toString()));
+            description.setValue(description.getValue().replaceAll("SOURCES", sourcesBuilder.toString().replaceAll(", $", "")));
+            description.setValue(description.getValue().replaceAll("NUMBER_OF", "" + publicationsCounter));
+            description.setValue(description.getValue().replaceAll("LANGUAGES", languagesCounter + " language(s)"));
+        }
 
         LingualityInfo lingualityInfo = new LingualityInfo();
 
