@@ -155,8 +155,9 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         // corpusInfo elements
         corpusInfo.setDatasetDistributionInfo(datasetDistributionInfo);
         corpusInfo.setResourceCreationInfo(resourceCreationInfo);
+        corpusInfo.setIdentificationInfo(identificationInfo);
 
-        identificationInfo.setResourceNames(new ArrayList<>());
+        corpusInfo.getIdentificationInfo().setResourceNames(new ArrayList<>());
 
         // metadataHeaderInfo elements
         MetadataIdentifier metadataIdentifier = createMetadataIdentifier(metadataHeaderInfo);
@@ -240,7 +241,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
         ResourceIdentifier resourceIdentifier = new ResourceIdentifier();
         resourceIdentifier.setValue(UUID.randomUUID().toString());
-        identificationInfo.getResourceIdentifiers().add(resourceIdentifier);
+        corpusInfo.getIdentificationInfo().getResourceIdentifiers().add(resourceIdentifier);
 
         corpusMetadata.setCorpusInfo(corpusInfo);
         corpusMetadata.setMetadataHeaderInfo(metadataHeaderInfo);
@@ -313,8 +314,8 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                 ResourceName resourceName = new ResourceName();
                 resourceName.setLang("en");
                 resourceName.setValue(resourceNameUsageDescription);
-                identificationInfo.getResourceNames().add(resourceName);
-                corpusInfo.setIdentificationInfo(identificationInfo);
+                corpusInfo.getIdentificationInfo().getResourceNames().add(resourceName);
+
 
 
 //                for (ContentConnector connector : contentConnectors) {
@@ -397,6 +398,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         currentDescription = currentDescription.replaceAll("LANGUAGES", languagesCounter + " languages");
 
         description.setValue(currentDescription);
+        System.out.println(corpusInfo.getIdentificationInfo());
         corpusInfo.getIdentificationInfo().getDescriptions().add(description);
 
         LingualityInfo lingualityInfo = new LingualityInfo();
