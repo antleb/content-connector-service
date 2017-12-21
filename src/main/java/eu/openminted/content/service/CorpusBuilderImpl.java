@@ -141,8 +141,6 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                 "on CREATION_DATE via OpenMinTeD services. " +
                 "The corpus includes NUMBER_OF publications from SOURCES in LANGUAGES";
 
-        StringBuilder sourcesBuilder = new StringBuilder();
-
         // tempQuery is used to import necessary information about the metadata and include them into the new corpus
         Query tempQuery = new Query(query.getKeyword(), query.getParams(), new ArrayList<>(), 0, 1);
 
@@ -205,13 +203,11 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                             facet.setLabel(omtdFacetLabels.getFacetLabelsFromEnum(facetEnum));
                     });
 
-                    sourcesBuilder.append(connector.getSourceName()).append(" and ");
                 } catch (IOException e) {
                     log.error("Connector " + connector.getSourceName() + " is unavailable");
                     log.debug("Connector " + connector.getSourceName() + " is unavailable", e);
                 }
             }
-            sourcesBuilder = sourcesBuilder.delete(sourcesBuilder.lastIndexOf(" and "), sourcesBuilder.length());
 
 //            if (connectors.size() > 0) {
 //                String.join(", ", connectors);
@@ -227,17 +223,6 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
         result.getFacets().add(sourceFacet);
 
-        for (Facet facet : result.getFacets()) {
-            // language
-            if (facet.getField().equalsIgnoreCase(OMTDFacetEnum.DOCUMENT_LANG.value())) {
-                addCorpusLanguageFields(facet, corpusInfo, descriptionString, sourcesBuilder, result);
-            }
-
-            // licence
-            if (facet.getField().equalsIgnoreCase(OMTDFacetEnum.RIGHTS.value())) {
-                addCorpusLicenceFields(facet, corpusInfo);
-            }
-        }
 
         ResourceIdentifier resourceIdentifier = new ResourceIdentifier();
         resourceIdentifier.setValue(UUID.randomUUID().toString());
@@ -310,11 +295,24 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
                 String resourceNameUsageDescription = "OpenMinTeD subset of CONNECTORS publications";
                 resourceNameUsageDescription = resourceNameUsageDescription.replaceAll("CONNECTORS", connectorsToString.toString().replaceAll(", $", ""));
+
                 log.info(resourceNameUsageDescription);
                 ResourceName resourceName = new ResourceName();
                 resourceName.setLang("en");
                 resourceName.setValue(resourceNameUsageDescription);
                 corpusInfo.getIdentificationInfo().getResourceNames().add(resourceName);
+
+                for (Facet facet : result.getFacets()) {
+                    // language
+                    if (facet.getField().equalsIgnoreCase(OMTDFacetEnum.DOCUMENT_LANG.value())) {
+                        addCorpusLanguageFields(facet, corpusInfo, descriptionString, connectorsToString, result);
+                    }
+
+                    // licence
+                    if (facet.getField().equalsIgnoreCase(OMTDFacetEnum.RIGHTS.value())) {
+                        addCorpusLicenceFields(facet, corpusInfo);
+                    }
+                }
 
 
 
@@ -374,7 +372,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
         int publicationsCounter = 0;
         int languagesCounter = 0;
         currentDescription = currentDescription.replaceAll("CREATION_DATE", new java.util.Date().toString());
-        currentDescription = currentDescription.replaceAll("SOURCES", sourcesBuilder.toString());
+        currentDescription = currentDescription.replaceAll("SOURCES", sourcesBuilder.toString().replaceAll(", $", ""));
 
         for (Value value : facet.getValues()) {
             if (value.getCount() > 0) {
