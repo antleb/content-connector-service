@@ -143,7 +143,7 @@ public class ContentServiceBuildingTest {
     }
 
     @Test
-//    @Ignore
+    @Ignore
     public void testBuild() throws Exception {
         query.setKeyword("mouse");
 
