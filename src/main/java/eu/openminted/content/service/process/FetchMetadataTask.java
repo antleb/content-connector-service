@@ -118,9 +118,9 @@ public class FetchMetadataTask implements Runnable {
                 CorpusBuilderInfoModel corpusBuilderInfoModel = corpusBuilderInfoDao.find(corpusId);
                 if (corpusBuilderInfoModel != null
                         && (
-                                corpusBuilderInfoModel.getStatus().equalsIgnoreCase(CorpusStatus.CANCELED.toString())
-                                        || corpusBuilderInfoModel.getStatus().equalsIgnoreCase(CorpusStatus.FAILED.toString())
-                                        || corpusBuilderInfoModel.getStatus().equalsIgnoreCase(CorpusStatus.EMPTY.toString()))
+                        corpusBuilderInfoModel.getStatus().equalsIgnoreCase(CorpusStatus.CANCELED.toString())
+                                || corpusBuilderInfoModel.getStatus().equalsIgnoreCase(CorpusStatus.FAILED.toString())
+                                || corpusBuilderInfoModel.getStatus().equalsIgnoreCase(CorpusStatus.EMPTY.toString()))
                         ) {
                     IOUtils.closeQuietly(inputStream);
                     isInterrupted = true;
@@ -167,7 +167,7 @@ public class FetchMetadataTask implements Runnable {
         }
 
         try {
-            if (!isInterrupted) {
+            if (!Thread.currentThread().isInterrupted()) {
                 corpusBuildingState.setCurrentStatus(CorpusStatus.PROCESSING_METADATA.toString());
                 producer.sendMessage(corpusBuildingState);
 
