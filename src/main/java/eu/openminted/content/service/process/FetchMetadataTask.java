@@ -167,8 +167,12 @@ public class FetchMetadataTask implements Runnable {
         }
 
         try {
-            if (!isInterrupted)
+            if (!isInterrupted) {
+                corpusBuildingState.setCurrentStatus(CorpusStatus.PROCESSING_METADATA.toString());
+                producer.sendMessage(corpusBuildingState);
+
                 nodes = fetchNodes(dbf, xpath);
+            }
         } catch (ParserConfigurationException e) {
             log.error("FetchMetadataTask.run-ParserConfigurationException ", e);
         } catch (IOException e) {
@@ -185,9 +189,6 @@ public class FetchMetadataTask implements Runnable {
             File metadataFile = new File(archivePath + "/" + archiveId + ".xml");
             File abstractFile = new File(archivePath + "/" + archiveId + ".txt");
             File downloadFile = new File(archivePath + "/" + archiveId);
-
-            corpusBuildingState.setCurrentStatus(CorpusStatus.PROCESSING_METADATA.toString());
-            producer.sendMessage(corpusBuildingState);
 
             try {
                 fetchAndStoreMetadataAndAbstracts(nodes, dbf, xpath,
