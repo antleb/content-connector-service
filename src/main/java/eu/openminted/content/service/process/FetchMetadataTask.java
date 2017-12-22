@@ -155,16 +155,14 @@ public class FetchMetadataTask implements Runnable {
 
             if (initializeCorpusBuildingState() == 0) {
 
-                log.info("Connector " + connector.getSourceName() + " doesn't contain any publications...");
-                corpusBuildingState.setCurrentStatus(CorpusStatus.EMPTY.toString());
-                producer.sendMessage(corpusBuildingState);
+//                corpusBuildingState.setCurrentStatus(CorpusStatus.EMPTY.toString());
+//                producer.sendMessage(corpusBuildingState);
                 Thread.currentThread().interrupt();
             }
         } catch (IOException e) {
 
-            log.info("Failed to connect to connector " + connector.getSourceName() + "...");
-            corpusBuildingState.setCurrentStatus(CorpusStatus.FAILED.toString());
-            producer.sendMessage(corpusBuildingState);
+//            corpusBuildingState.setCurrentStatus(CorpusStatus.FAILED.toString());
+//            producer.sendMessage(corpusBuildingState);
             Thread.currentThread().interrupt();
         }
 

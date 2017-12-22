@@ -36,7 +36,6 @@ import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
-import java.util.stream.Collectors;
 
 import static eu.openminted.content.connector.utils.SearchExtensions.merge;
 
@@ -266,9 +265,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                 OIDCAuthenticationToken authentication = (OIDCAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
                 populateCorpus(corpusMetadata);
                 ObjectMapper objectMapper = new ObjectMapper();
-                String corpus = objectMapper.writeValueAsString(corpusMetadata);
-                log.info(corpus);
-                corpusBuilderInfoDao.insert(metadataIdentifier.getValue(), authentication.getSub(), queryString, corpus, CorpusStatus.INITIATING, archiveID);
+
                 StringBuilder connectorsToString = new StringBuilder();
 
                 for (Facet facet : result.getFacets()) {
@@ -292,7 +289,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                                 corpusBuildingState.setToken(authentication.getSub());
                                 corpusBuildingState.setCurrentStatus(CorpusStatus.INITIATING.toString());
                                 corpusBuildingState.setConnector(value.getValue());
-                                log.info("Sending Corpus Building state to JMS for connector " + value.getValue() + " with " + value.getCount() + " results...");
+//                                log.info("Sending Corpus Building state to JMS for connector " + value.getValue() + " with " + value.getCount() + " results...");
                                 producer.sendMessage(corpusBuildingState);
                             }
                         }
@@ -317,6 +314,10 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                         addCorpusLicenceFields(facet, corpusInfo);
                     }
                 }
+
+                String corpus = objectMapper.writeValueAsString(corpusMetadata);
+                log.info(corpus);
+                corpusBuilderInfoDao.insert(metadataIdentifier.getValue(), authentication.getSub(), queryString, corpus, CorpusStatus.INITIATING, archiveID);
 
 
 

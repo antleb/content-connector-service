@@ -15,6 +15,7 @@ import eu.openminted.registry.domain.Corpus;
 import eu.openminted.registry.domain.DocumentTypeEnum;
 import eu.openminted.registry.domain.PublicationTypeEnum;
 import eu.openminted.store.restclient.StoreRESTClient;
+import org.apache.log4j.Logger;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -53,6 +54,8 @@ import java.util.regex.Pattern;
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration("classpath:/springrest-servlet.xml")
 public class ContentServiceBuildingTest {
+
+    private static Logger log = Logger.getLogger(ContentServiceBuildingTest.class.getName());
 
     @Autowired
     private List<ContentConnector> contentConnectors;
@@ -143,7 +146,7 @@ public class ContentServiceBuildingTest {
     }
 
     @Test
-    @Ignore
+//    @Ignore
     public void testBuild() throws Exception {
         query.setKeyword("mouse");
 

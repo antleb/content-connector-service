@@ -139,8 +139,7 @@ public class CorpusBuilderExecutionQueueConsumer {
                                     try {
                                         future.get();
                                     } catch (InterruptedException e) {
-                                        corpusBuilderInfoDao.updateStatus(corpusBuilderInfoModel.getId(), CorpusStatus.FAILED);
-                                        log.info("Thread Interrupted or error in execution");
+                                        log.info("Thread Interrupted either because there where no data or some mistake occurred");
                                     } catch (Exception e) {
                                         corpusBuilderInfoDao.updateStatus(corpusBuilderInfoModel.getId(), CorpusStatus.FAILED);
                                         log.error("CorpusBuilderImpl.buildCorpus - Inner exception at the future.get method", e);
