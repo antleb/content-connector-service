@@ -248,7 +248,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             String archiveID = storeRESTClient.createArchive().getResponse();
 
             DataFormatInfo dataFormatInfo = new DataFormatInfo();
-            dataFormatInfo.setDataFormat(DataFormatType.APPLICATION_PDF);
+            dataFormatInfo.setDataFormat(DataFormatType.HTTP___W3ID_ORG_META_SHARE_OMTD_SHARE_PDF);
 
             TextFormatInfo textFormatInfo = new TextFormatInfo();
             textFormatInfo.setDataFormatInfo(dataFormatInfo);
@@ -642,7 +642,6 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             emails.add(authentication.getUserInfo().getEmail());
             communicationInfo.setEmails(emails);
             personInfo.setCommunicationInfo(communicationInfo);
-
             contactInfo.setContactType(ContactTypeEnum.CONTACT_EMAIL);
             contactInfo.setContactPoint(authentication.getUserInfo().getEmail());
 
