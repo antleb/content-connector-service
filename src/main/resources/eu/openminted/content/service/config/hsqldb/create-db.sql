@@ -5,5 +5,6 @@ CREATE TABLE corpusbuilderinfo (
   token    VARCHAR(50),
   query VARCHAR(500),
   status VARCHAR(15),
-  archiveId VARCHAR(50)
+  archiveId VARCHAR(50),
+  corpus TEXT
 );
