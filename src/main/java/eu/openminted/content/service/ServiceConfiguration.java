@@ -28,6 +28,9 @@ public class ServiceConfiguration {
     @Value("${jms.host}")
     private String jmsHost;
 
+    @Value("${db.host:#{'jdbc:postgresql://db:5432/corpusbuilder'}}")
+    private String dbHost;
+
     @Bean
     public JmsTemplate jmsTemplate(){
         JmsTemplate template = new JmsTemplate();
@@ -69,7 +72,7 @@ public class ServiceConfiguration {
     public DataSource dbcpDataSource() {
         BasicDataSource basicDataSource = new BasicDataSource();
         basicDataSource.setDriverClassName("org.postgresql.Driver");
-        basicDataSource.setUrl("jdbc:postgresql://83.212.101.85:5432/corpusbuilder");
+        basicDataSource.setUrl(dbHost);
         basicDataSource.setUsername("vrasidas");
         basicDataSource.setPassword("paparia");
         return basicDataSource;
