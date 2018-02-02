@@ -4,7 +4,7 @@ CREATE TABLE corpusbuilderinfo (
   id    TEXT PRIMARY KEY,
   token    TEXT,
   query TEXT,
+  corpus TEXT,
   status TEXT,
-  archiveId TEXT,
-  corpus TEXT
+  archiveId TEXT
 );
