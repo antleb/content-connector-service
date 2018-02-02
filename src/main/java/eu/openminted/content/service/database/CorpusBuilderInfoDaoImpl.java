@@ -2,6 +2,7 @@ package eu.openminted.content.service.database;
 
 import eu.openminted.content.service.model.CorpusBuilderInfoModel;
 import eu.openminted.corpus.CorpusStatus;
+import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -13,6 +14,7 @@ import java.util.Map;
 
 @Repository
 public class CorpusBuilderInfoDaoImpl implements CorpusBuilderInfoDao {
+    private static Logger logger = Logger.getLogger(CorpusBuilderInfoDaoImpl.class);
 
     @Autowired
     private NamedParameterJdbcTemplate jdbcTemplate;
@@ -52,7 +54,9 @@ public class CorpusBuilderInfoDaoImpl implements CorpusBuilderInfoDao {
         params.put("status", status.toString());
         params.put("archiveId", archiveId);
 
-        this.jdbcTemplate.update("insert into corpusbuilderinfo values (:id, :token, :query, :corpus, :status, :archiveId);", params);
+        logger.debug("Inserting new with archiveId " + archiveId);
+
+        this.jdbcTemplate.update("insert into corpusbuilderinfo (id,token,query,corpus,status,archiveId) values (:id, :token, :query, :corpus, :status, :archiveId);", params);
     }
 
     @Override
@@ -65,6 +69,9 @@ public class CorpusBuilderInfoDaoImpl implements CorpusBuilderInfoDao {
 
     @Override
     public void update(String id, String field, Object value) {
+
+        logger.debug("Updating " + field + " to '" + value + "'");
+
         Map<String, Object> params = new HashMap<>();
         params.put("id", id);
         params.put(field, value.toString());
