@@ -99,6 +99,22 @@ public class CorpusBuilderExecutionQueueConsumer {
                                 }
 
                                 for (ContentConnector connector : contentConnectors) {
+                                    if (connectors.size() > 0 && !connectors.contains(connector.getSourceName().toLowerCase()))
+                                        continue;
+                                    else {
+                                        try {
+                                            SearchResult searchResult = connector.search(query);
+
+                                            if (searchResult.getTotalHits() == 0)
+                                                continue;
+                                        } catch (Exception e) {
+                                            log.error("Error searching in " + connector.getSourceName() + " connector", e);
+
+                                            continue;
+                                        }
+                                    }
+/*
+
                                     SearchResult searchResult = connector.search(query);
 
                                     Facet sourceFacet = null;
@@ -120,7 +136,7 @@ public class CorpusBuilderExecutionQueueConsumer {
 
                                     if (connectors.size() > 0 && !connectors.contains(connector.getSourceName().toLowerCase()))
                                         continue;
-
+*/
                                     FetchMetadataTask task = new FetchMetadataTask(storeRESTClient,
                                             corpusBuilderInfoModel.getToken(),
                                             connector,
