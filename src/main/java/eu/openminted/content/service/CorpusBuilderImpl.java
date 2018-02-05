@@ -179,7 +179,8 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             updateFacets(tempQuery);
 
             for (ContentConnector connector : contentConnectors) {
-                if (connectors.size() > 0 && !connectors.contains(connector.getSourceName())) continue;
+                if (connectors.size() > 0 && !connectors.contains(connector.getSourceName()))
+                    continue;
 
                 try {
                     SearchResult res = connector.search(tempQuery);
@@ -208,9 +209,9 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                             facet.setLabel(omtdFacetLabels.getFacetLabelsFromEnum(facetEnum));
                     });
 
-                } catch (IOException e) {
-                    log.error("Connector " + connector.getSourceName() + " is unavailable");
-                    log.debug("Connector " + connector.getSourceName() + " is unavailable", e);
+                } catch (Exception e) {
+                    log.warn("Connector " + connector.getSourceName() + " is unavailable");
+//                    log.debug("Connector " + connector.getSourceName() + " is unavailable", e);
                 }
             }
 
