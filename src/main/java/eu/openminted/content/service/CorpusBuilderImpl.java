@@ -603,9 +603,16 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             for (ContentConnector connector : contentConnectors) {
                 if (sources.size() > 0 && !sources.contains(connector.getSourceName())) continue;
 
-                SearchResult searchResult = connector.search(query);
-                if (searchResult.getTotalHits() == 0)
+                try {
+                    SearchResult searchResult = connector.search(query);
+
+                    if (searchResult.getTotalHits() == 0)
+                        continue;
+                } catch (Exception e) {
+                    log.error("Error searching in connector " + connector.getSourceName(), e);
+
                     continue;
+                }
 
                 CorpusBuildingState corpusBuildingState = new CorpusBuildingState();
                 corpusBuildingState.setId(corpusId + "@" + connector.getSourceName());
