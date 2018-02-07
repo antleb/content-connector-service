@@ -654,7 +654,8 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             contactInfo.setContactPoint(authentication.getUserInfo().getEmail());
 
             username = authentication.getUserInfo().getName();
-            if (username == null) username = "";
+            if (username == null)
+                username = authentication.getUserInfo().getGivenName() + " " + authentication.getUserInfo().getFamilyName();
         } else {
             log.warn("There is no valid authentication token. Going with default email.");
 
