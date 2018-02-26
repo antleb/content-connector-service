@@ -55,7 +55,7 @@
     <bean class="org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory">
         <constructor-arg name="host" value="${redis.host}"/>
         <constructor-arg name="port" value="${redis.port}"/>
-        <!--<property name="password" value="${redis.password:#{null}}" />-->
+        <property name="password" value="${redis.password}" />
     </bean>
 
 
