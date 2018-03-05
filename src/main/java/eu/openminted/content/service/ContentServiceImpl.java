@@ -74,6 +74,7 @@ public class ContentServiceImpl implements ContentService {
                 if (connectors.size() > 0 && !connectors.contains(connector.getSourceName())) continue;
 
                 try {
+
                     SearchResult res = connector.search(query);
 
                     Value sourceValue = new Value();
@@ -85,6 +86,8 @@ public class ContentServiceImpl implements ContentService {
                     merge(result, res);
                 } catch (Exception e){
                     log.error("Error searching in " + connector.getSourceName(), e);
+                    for(String facet : query.getFacets())
+                        log.error(facet);
                 }
             }
         }

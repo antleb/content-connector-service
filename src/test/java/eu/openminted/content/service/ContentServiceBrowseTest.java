@@ -142,7 +142,7 @@ public class ContentServiceBrowseTest {
             query.getParams().get("documentlanguage").add("Official Aramaic (700-300 Bce); Imperial Aramaic (700-300 Bce)");
         */
 
-//        Example of an openAIRE's solr query
+//        Example of an omtd's solr query
         /*
 
         start=0&rows=1&facet=true&facet.field=instancetypename
@@ -189,7 +189,7 @@ public class ContentServiceBrowseTest {
     public void testBrowse() throws IOException {
         query.setParams(new HashMap<>());
         query.getParams().put("source", new ArrayList<>());
-        query.getParams().get("source").add("OpenAIRE");
+        query.getParams().get("source").add("omtd");
 
 //        Additional parameters for filtering are in comments below
 
@@ -207,7 +207,7 @@ public class ContentServiceBrowseTest {
         SearchResult searchResult = controller.browse(query);
         if (searchResult != null) {
 
-            System.out.println("Results from OpenAIRE: " + searchResult.getTotalHits());
+            System.out.println("Results from omtd: " + searchResult.getTotalHits());
 
             for (Facet facet : searchResult.getFacets()) {
                 for (Value value : facet.getValues()) {

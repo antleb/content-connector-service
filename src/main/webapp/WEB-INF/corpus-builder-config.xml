@@ -90,7 +90,7 @@
     </bean>
 
     <util:map id="userRoles">
-        <entry key="urn:mace:openminted.eu:aai.openminted.eu:group:OpenAIRE+Super+Administrator" value="ROLE_ADMIN"/>
+        <entry key="urn:mace:openminted.eu:aai.openminted.eu:group:omtd+Super+Administrator" value="ROLE_ADMIN"/>
     </util:map>
 
     <util:set id="namedAdmins" value-type="org.mitre.openid.connect.client.SubjectIssuerGrantedAuthority">

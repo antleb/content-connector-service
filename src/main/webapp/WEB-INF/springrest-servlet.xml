@@ -8,7 +8,7 @@
  <import resource="corpus-builder-config.xml"/>
 
  <mvc:annotation-driven/>
- <context:component-scan base-package="eu.openminted.content,eu.openminted.content.connector.core" />
+ <context:component-scan base-package="eu.openminted.content.*"/>
 
 </beans>
 

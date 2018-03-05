@@ -128,7 +128,7 @@ public class ContentServiceBuildingTest {
     public void testPrepare() {
         query.setParams(new HashMap<>());
         query.getParams().put(OMTDFacetEnum.SOURCE.value(), new ArrayList<>());
-        query.getParams().get(OMTDFacetEnum.SOURCE.value()).add("OpenAIRE");
+        query.getParams().get(OMTDFacetEnum.SOURCE.value()).add("omtd");
         query.getParams().put(OMTDFacetEnum.DOCUMENT_LANG.value(), new ArrayList<>());
         query.getParams().get(OMTDFacetEnum.DOCUMENT_LANG.value()).add("Grc");
 
@@ -153,7 +153,7 @@ public class ContentServiceBuildingTest {
         query.setParams(new HashMap<>());
 //        query.getParams().put(OMTDFacetEnum.SOURCE.value(), new ArrayList<>());
 //        query.getParams().get(OMTDFacetEnum.SOURCE.value()).add("CORE");
-//        query.getParams().get(OMTDFacetEnum.SOURCE.value()).add("OpenAIRE");
+//        query.getParams().get(OMTDFacetEnum.SOURCE.value()).add("omtd");
 
         query.getParams().put(OMTDFacetEnum.DOCUMENT_LANG.value(), new ArrayList<>());
         query.getParams().get(OMTDFacetEnum.DOCUMENT_LANG.value()).add("En");
