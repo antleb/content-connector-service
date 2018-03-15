@@ -181,23 +181,20 @@ public class CorpusBuilderImpl implements CorpusBuilder {
             for (ContentConnector connector : contentConnectors) {
                 if (connectors.size() > 0 && !connectors.contains(connector.getSourceName()))
                     continue;
-
                 try {
                     SearchResult res = connector.search(tempQuery);
                     Value value = new Value();
-
                     value.setValue(connector.getSourceName());
                     value.setCount(res.getTotalHits());
 
                     sourceFacet.getValues().add(value);
-
                     merge(result, res);
-
                     // Remove values with count 0 and set labels to facets
                     result.getFacets().forEach(facet -> {
                         List<Value> valuesToRemove = new ArrayList<>();
                         facet.getValues().forEach(value1 -> {
                             if (value1.getCount() == 0) valuesToRemove.add(value1);
+
                         });
 
                         if (valuesToRemove.size() > 0) {
@@ -210,21 +207,10 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                     });
 
                 } catch (Exception e) {
-                    log.warn("Connector " + connector.getSourceName() + " is unavailable");
-//                    log.debug("Connector " + connector.getSourceName() + " is unavailable", e);
+                    log.warn("Connector " + connector.getSourceName() + " is unavailable", e);
                 }
             }
 
-//            if (connectors.size() > 0) {
-//                String.join(", ", connectors);
-//                connectorsToString = new StringBuilder(new ArrayList<>(connectors).toString()
-//                        .replaceAll("\\[|\\]", ""));
-//            } else {
-//                connectorsToString = new StringBuilder(contentConnectors.stream()
-//                        .map(ContentConnector::getSourceName)
-//                        .collect(Collectors.toList()).toString()
-//                        .replaceAll("\\[|\\]", ""));
-//            }
         }
 
         result.getFacets().add(sourceFacet);
@@ -239,8 +225,6 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
         try {
             queryString = new ObjectMapper().writeValueAsString(query);
-
-
         } catch (JsonProcessingException e) {
             log.error("CorpusBuilderImpl.prepareCorpus: Unable to write value as String", e);
         }
@@ -290,7 +274,6 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                                 corpusBuildingState.setToken(authentication.getSub());
                                 corpusBuildingState.setCurrentStatus(CorpusStatus.INITIATING.toString());
                                 corpusBuildingState.setConnector(value.getValue());
-//                                log.info("Sending Corpus Building state to JMS for connector " + value.getValue() + " with " + value.getCount() + " results...");
                                 producer.sendMessage(corpusBuildingState);
                             }
                         }
@@ -303,7 +286,6 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                 resourceName.setLang("en");
                 resourceName.setValue(resourceNameUsageDescription);
                 corpusInfo.getIdentificationInfo().getResourceNames().add(resourceName);
-
                 for (Facet facet : result.getFacets()) {
                     // language
                     if (facet.getField().equalsIgnoreCase(OMTDFacetEnum.DOCUMENT_LANG.value())) {
@@ -320,34 +302,6 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                 log.info(corpus);
                 corpusBuilderInfoDao.insert(metadataIdentifier.getValue(), authentication.getSub(), queryString, corpus, CorpusStatus.INITIATING, archiveID);
 
-
-
-//                for (ContentConnector connector : contentConnectors) {
-//                    if (connectors.size() > 0 && !connectors.contains(connector.getSourceName())) continue;
-//                    int totalHits = 0;
-//
-//
-//                    if (corpusInfo.getDatasetDistributionInfo() != null) {
-//
-//                        for (SizeInfo sizeInfo : corpusInfo.getDatasetDistributionInfo().getSizes()) {
-//                            if (sizeInfo.getSizeUnit() == SizeUnitEnum.TEXTS || sizeInfo.getSizeUnit() == SizeUnitEnum.FILES)
-//                                totalHits += Integer.parseInt(sizeInfo.getSize());
-//                        }
-//                    }
-//
-//
-//
-//                    if (totalHits > 0) {
-//                        CorpusBuildingState corpusBuildingState = new CorpusBuildingState();
-//                        corpusBuildingState.setTotalHits(totalHits);
-//                        corpusBuildingState.setId(metadataIdentifier.getValue() + "@" + connector.getSourceName());
-//                        corpusBuildingState.setToken(authentication.getSub());
-//                        corpusBuildingState.setCurrentStatus(CorpusStatus.INITIATING.toString());
-//                        corpusBuildingState.setConnector(connector.getSourceName());
-//                        log.info("\n\n\nSending Corpus Building state to JMS for connector " + connector.getSourceName() + "\n\n\n");
-//                        producer.sendMessage(corpusBuildingState);
-//                    }
-//                }
             } catch (ClassCastException e) {
                 log.error("User is not authenticated to build corpus", e);
             } catch (JsonProcessingException e) {
