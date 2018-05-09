@@ -35,6 +35,16 @@
         </dependency>
         <dependency>
             <groupId>eu.openminted</groupId>
+            <artifactId>content-connector-omtd</artifactId>
+            <version>1.0.0-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>OMTD-content-connector-istex</groupId>
+            <artifactId>OMTD-content-connector-istex</artifactId>
+            <version>0.0.1-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>eu.openminted</groupId>
             <artifactId>content-connector-rest-client</artifactId>
             <version>1.0.1-SNAPSHOT</version>
             <exclusions>
