@@ -190,6 +190,11 @@
             <version>4.12</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>OMTD-content-connector-istex</groupId>
+            <artifactId>OMTD-content-connector-istex</artifactId>
+            <version>0.0.1-SNAPSHOT</version>
+        </dependency>
     </dependencies>
 
     <repositories>

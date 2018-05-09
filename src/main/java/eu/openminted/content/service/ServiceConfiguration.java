@@ -1,5 +1,7 @@
 package eu.openminted.content.service;
 
+import eu.openminted.content.connector.ContentConnector;
+import fr.inist.IstexContentConnector;
 import org.apache.activemq.ActiveMQConnectionFactory;
 import org.apache.commons.dbcp2.BasicDataSource;
 import org.apache.log4j.LogManager;
@@ -78,5 +80,10 @@ public class ServiceConfiguration {
     @Bean
     public NamedParameterJdbcTemplate jdbcTemplate() {
         return new NamedParameterJdbcTemplate(dbcpDataSource());
+    }
+
+    @Bean
+    public ContentConnector newInstexConector() {
+        return new IstexContentConnector();
     }
 }
