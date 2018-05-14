@@ -79,6 +79,9 @@ public class ServiceConfiguration {
     public DataSource dbcpDataSource() {
         BasicDataSource basicDataSource = new BasicDataSource();
         basicDataSource.setDriverClassName("org.postgresql.Driver");
+
+        logger.info("Initiating @ "+dbHost);
+
         basicDataSource.setUrl(dbHost);
         basicDataSource.setUsername(dbUser);
         basicDataSource.setPassword(dbPass);
