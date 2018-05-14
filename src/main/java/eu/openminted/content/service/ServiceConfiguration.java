@@ -30,13 +30,13 @@ public class ServiceConfiguration {
     @Value("${jms.host}")
     private String jmsHost;
 
-    @Value("${db.host}")
+    @Value("${jdbc.url}")
     private String dbHost;
 
-    @Value("${db.username}")
+    @Value("${jdbc.username}")
     private String dbUser;
 
-    @Value("${db.password}")
+    @Value("${jdbc.password}")
     private String dbPass;
 
     @Bean
