@@ -28,13 +28,13 @@ public class ServiceConfiguration {
     @Value("${jms.host}")
     private String jmsHost;
 
-    @Value("${db.host:#{'jdbc:postgresql://db:5432/corpusbuilder'}}")
+    @Value("${db.host}")
     private String dbHost;
 
-    @Value("${db.username:#{'vrasidas'}}")
+    @Value("${db.username}")
     private String dbUser;
 
-    @Value("${db.password:#{'paparia'}}")
+    @Value("${db.password}")
     private String dbPass;
 
 
