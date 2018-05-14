@@ -80,7 +80,7 @@ public class ServiceConfiguration {
         BasicDataSource basicDataSource = new BasicDataSource();
         basicDataSource.setDriverClassName("org.postgresql.Driver");
 
-        logger.info("Initiating @ "+dbHost);
+        logger.info("-------!------!------Initiating @ "+ dbHost);
 
         basicDataSource.setUrl(dbHost);
         basicDataSource.setUsername(dbUser);
