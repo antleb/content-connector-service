@@ -106,11 +106,9 @@ public class ContentServiceController {
         if (SecurityContextHolder.getContext() == null || !(SecurityContextHolder.getContext().getAuthentication() instanceof OIDCAuthenticationToken))
             throw new ServiceAuthenticationException();
 
-        log.info("Query keyword " + query.getKeyword());
         if(query.getKeyword() == null || query.getKeyword().isEmpty()){
             query.setKeyword("*:*");
         }
-        log.info(query.getKeyword());
         return corpusBuilder.prepareCorpus(query);
     }
 
