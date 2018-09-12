@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 public class JMSProducer {
     private static Logger log = Logger.getLogger(JMSProducer.class.getName());
 
-    @org.springframework.beans.factory.annotation.Value("${jms.corpus.state.topic}")
+    @org.springframework.beans.factory.annotation.Value("${jms.corpus.state.topic:corpus.state}")
     private String stateTopic;
 
     @org.springframework.beans.factory.annotation.Value("${jms.content.email.topic}")
