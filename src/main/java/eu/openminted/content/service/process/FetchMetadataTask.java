@@ -3,13 +3,13 @@ package eu.openminted.content.service.process;
 import eu.openminted.content.connector.ContentConnector;
 import eu.openminted.content.connector.Query;
 import eu.openminted.content.connector.SearchResult;
-import eu.openminted.content.service.database.CorpusBuilderInfoDao;
 import eu.openminted.content.service.cache.CacheClient;
+import eu.openminted.content.service.database.CorpusBuilderInfoDao;
 import eu.openminted.content.service.messages.JMSProducer;
 import eu.openminted.content.service.model.CorpusBuilderInfoModel;
-import eu.openminted.corpus.CorpusBuildingState;
 import eu.openminted.corpus.CorpusStatus;
 import eu.openminted.registry.domain.MimeTypeEnum;
+import eu.openminted.registry.domain.connector.CorpusBuildingState;
 import eu.openminted.store.restclient.StoreRESTClient;
 import org.apache.commons.io.IOUtils;
 import org.apache.log4j.Logger;
@@ -101,7 +101,7 @@ public class FetchMetadataTask implements Runnable {
         this.corpusBuildingState.setMetadataProgress(0);
         this.corpusBuildingState.setFulltextProgress(0);
         this.corpusBuildingState.setConnector(this.connector.getSourceName());
-        this.corpusBuildingState.setToken(authenticationToken);
+        this.corpusBuildingState.setPersonIdentifier(authenticationToken);
         this.timerTask = createTimerTask();
         this.identifiers = new HashMap<>();
     }
@@ -168,7 +168,7 @@ public class FetchMetadataTask implements Runnable {
 
         try {
             if (!Thread.currentThread().isInterrupted()) {
-                corpusBuildingState.setCurrentStatus(CorpusStatus.PROCESSING_METADATA.toString());
+                corpusBuildingState.setCurrentStatus(CorpusBuildingState.CurrentStatus.PROCESSING_METADATA);
                 producer.sendMessage(corpusBuildingState);
 
                 nodes = fetchNodes(dbf, xpath);
@@ -227,8 +227,8 @@ public class FetchMetadataTask implements Runnable {
 
     private int initializeCorpusBuildingState() throws IOException {
         CorpusBuilderInfoModel corpusBuilderInfoModel = corpusBuilderInfoDao.find(corpusId);
-        corpusBuildingState.setId(corpusId + "@" + connector.getSourceName());
-        corpusBuildingState.setCurrentStatus(corpusBuilderInfoModel.getStatus());
+        corpusBuildingState.setOmtdId(corpusId + "@" + connector.getSourceName());
+        corpusBuildingState.setCurrentStatus(CorpusBuildingState.CurrentStatus.fromValue(corpusBuilderInfoModel.getStatus()));
         SearchResult searchResult = connector.search(query);
 
         if (searchResult != null) {
@@ -362,7 +362,7 @@ public class FetchMetadataTask implements Runnable {
         int fulltextProgress = 0;
         int totalFulltext = corpusBuildingState.getTotalFulltext();
 
-        corpusBuildingState.setCurrentStatus(CorpusStatus.PROCESSING_FULLTEXT.toString());
+        corpusBuildingState.setCurrentStatus(CorpusBuildingState.CurrentStatus.PROCESSING_FULLTEXT);
         producer.sendMessage(corpusBuildingState);
 
         for (String identifier : identifiers.keySet()) {
@@ -469,7 +469,7 @@ public class FetchMetadataTask implements Runnable {
             }
         }
 
-        corpusBuildingState.setCurrentStatus(CorpusStatus.CREATED.toString());
+        corpusBuildingState.setCurrentStatus(CorpusBuildingState.CurrentStatus.CREATED);
         producer.sendMessage(corpusBuildingState);
     }
 

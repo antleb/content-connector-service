@@ -1,7 +1,7 @@
 package eu.openminted.content.service.messages;
 
 import eu.openminted.content.service.mail.EmailMessage;
-import eu.openminted.corpus.CorpusBuildingState;
+import eu.openminted.registry.domain.connector.CorpusBuildingState;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jms.core.JmsTemplate;

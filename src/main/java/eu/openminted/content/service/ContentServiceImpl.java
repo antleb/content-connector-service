@@ -130,7 +130,6 @@ public class ContentServiceImpl implements ContentService {
                 SearchResult searchResult;
                 try {
                     searchResult = connector.search(new Query("*", new HashMap<>(), new ArrayList<>(), 0, 1));
-
                 } catch (IOException e ) {
                     searchResult = null;
                 }

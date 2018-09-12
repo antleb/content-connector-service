@@ -14,11 +14,11 @@ import eu.openminted.content.service.messages.JMSProducer;
 import eu.openminted.content.service.model.CorpusBuilderInfoModel;
 import eu.openminted.content.service.process.CorpusBuilderExecutionQueueConsumer;
 import eu.openminted.corpus.CorpusBuilder;
-import eu.openminted.corpus.CorpusBuildingState;
 import eu.openminted.corpus.CorpusStatus;
 import eu.openminted.registry.core.domain.Facet;
 import eu.openminted.registry.core.domain.Value;
 import eu.openminted.registry.domain.*;
+import eu.openminted.registry.domain.connector.CorpusBuildingState;
 import eu.openminted.store.restclient.StoreRESTClient;
 import org.apache.log4j.Logger;
 import org.mitre.openid.connect.model.OIDCAuthenticationToken;
@@ -74,7 +74,7 @@ public class CorpusBuilderImpl implements CorpusBuilder {
     @org.springframework.beans.factory.annotation.Value("${tempDirectoryPath}")
     private String tempDirectoryPath;
 
-    @org.springframework.beans.factory.annotation.Value("${store.host}")
+    @org.springframework.beans.factory.annotation.Value("${store.host:#{'http://83.212.98.76:8090/'}")
     private String storeHost;
 
     @org.springframework.beans.factory.annotation.Value("${registry.host}")
@@ -270,9 +270,9 @@ public class CorpusBuilderImpl implements CorpusBuilder {
 
                                 CorpusBuildingState corpusBuildingState = new CorpusBuildingState();
                                 corpusBuildingState.setTotalHits(value.getCount());
-                                corpusBuildingState.setId(metadataIdentifier.getValue() + "@" + value.getValue());
-                                corpusBuildingState.setToken(authentication.getSub());
-                                corpusBuildingState.setCurrentStatus(CorpusStatus.INITIATING.toString());
+                                corpusBuildingState.setOmtdId(metadataIdentifier.getValue() + "@" + value.getValue());
+                                corpusBuildingState.setPersonIdentifier(authentication.getSub());
+                                corpusBuildingState.setCurrentStatus(CorpusBuildingState.CurrentStatus.INITIATING);
                                 corpusBuildingState.setConnector(value.getValue());
                                 producer.sendMessage(corpusBuildingState);
                             }
@@ -569,9 +569,9 @@ public class CorpusBuilderImpl implements CorpusBuilder {
                 }
 
                 CorpusBuildingState corpusBuildingState = new CorpusBuildingState();
-                corpusBuildingState.setId(corpusId + "@" + connector.getSourceName());
-                corpusBuildingState.setToken(authenticationSub);
-                corpusBuildingState.setCurrentStatus(CorpusStatus.SUBMITTED.toString());
+                corpusBuildingState.setOmtdId(corpusId + "@" + connector.getSourceName());
+                corpusBuildingState.setPersonIdentifier(authenticationSub);
+                corpusBuildingState.setCurrentStatus(CorpusBuildingState.CurrentStatus.SUBMITTED);
                 corpusBuildingState.setConnector(connector.getSourceName());
 
                 int totalHits = 0;
