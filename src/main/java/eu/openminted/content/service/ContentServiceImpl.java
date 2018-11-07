@@ -6,6 +6,8 @@ import eu.openminted.content.connector.SearchResult;
 import eu.openminted.content.connector.utils.faceting.OMTDFacetEnum;
 import eu.openminted.content.connector.utils.faceting.OMTDFacetLabels;
 import eu.openminted.content.service.messages.JMSProducer;
+import eu.openminted.content.service.threads.StatusTask;
+import eu.openminted.content.service.threads.ThreadpoolWrapper;
 import eu.openminted.registry.core.domain.Facet;
 import eu.openminted.registry.core.domain.Value;
 import org.apache.log4j.Logger;
@@ -16,6 +18,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.Executors;
 
 import static eu.openminted.content.connector.utils.SearchExtensions.merge;
 
@@ -120,28 +123,52 @@ public class ContentServiceImpl implements ContentService {
      *
      * @return ServiceStatus object
      */
-    @Override
+//    @Override
+//    public ServiceStatus status() {
+//        serviceStatus.setMaxFulltextDocuments(contentLimit);
+//
+//        for (ContentConnector connector : contentConnectors) {
+//
+//            try {
+//                SearchResult searchResult;
+//                try {
+//                    searchResult = connector.search(new Query("*", new HashMap<>(), new ArrayList<>(), 0, 1));
+//                } catch (IOException e ) {
+//                    searchResult = null;
+//                }
+//
+//                if (searchResult != null && searchResult.getTotalHits() > 0) {
+//                    serviceStatus.getContentConnectors().put(connector.getSourceName(), true);
+//                    System.out.println(connector.getSourceName() + ": " + searchResult.getTotalHits());
+//                } else
+//                    serviceStatus.getContentConnectors().put(connector.getSourceName(), false);
+//
+//            } catch (Exception e) {
+//                log.error("Error retrieving content connector");
+//            }
+//        }
+//        return serviceStatus;
+//    }
+
     public ServiceStatus status() {
+
         serviceStatus.setMaxFulltextDocuments(contentLimit);
+        ThreadpoolWrapper threadpool = new ThreadpoolWrapper(Executors.newFixedThreadPool(2));
 
+        // Create and add tasks to the queue
         for (ContentConnector connector : contentConnectors) {
+            threadpool.addTask(new StatusTask(connector));
+        }
 
-            try {
-                SearchResult searchResult;
-                try {
-                    searchResult = connector.search(new Query("*", new HashMap<>(), new ArrayList<>(), 0, 1));
-                } catch (IOException e ) {
-                    searchResult = null;
-                }
+        threadpool.invokeAll(4);
+        threadpool.shutdown();
 
-                if (searchResult != null && searchResult.getTotalHits() > 0) {
-                    serviceStatus.getContentConnectors().put(connector.getSourceName(), true);
-                    System.out.println(connector.getSourceName() + ": " + searchResult.getTotalHits());
-                } else
-                    serviceStatus.getContentConnectors().put(connector.getSourceName(), false);
-
-            } catch (Exception e) {
-                log.error("Error retrieving content connector");
+        List<String> results = threadpool.getResults();
+        for (ContentConnector connector : contentConnectors) {
+            if (results.contains(connector.getSourceName())) {
+                serviceStatus.getContentConnectors().put(connector.getSourceName(), true);
+            } else {
+                serviceStatus.getContentConnectors().put(connector.getSourceName(), false);
             }
         }
         return serviceStatus;
