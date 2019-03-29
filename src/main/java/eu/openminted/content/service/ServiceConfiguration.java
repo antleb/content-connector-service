@@ -1,5 +1,8 @@
 package eu.openminted.content.service;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.PropertyAccessor;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.activemq.ActiveMQConnectionFactory;
 import org.apache.commons.dbcp2.BasicDataSource;
 import org.apache.log4j.LogManager;
@@ -15,6 +18,8 @@ import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.jedis.JedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
+import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer;
+import org.springframework.data.redis.serializer.RedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jms.annotation.EnableJms;
@@ -71,9 +76,22 @@ public class ServiceConfiguration {
     }
 
     @Bean
-    RedisTemplate<Object, Object> redisTemplate() {
-        RedisTemplate<Object, Object> redisTemplate = new RedisTemplate<Object, Object>();
+    public RedisTemplate<Object, Object> redisTemplate() {
+        RedisTemplate<Object, Object> redisTemplate = new RedisTemplate<>();
+
+        RedisSerializer<String> redisSerializer = new StringRedisSerializer();
+
+        Jackson2JsonRedisSerializer jackson2JsonRedisSerializer = new Jackson2JsonRedisSerializer(Object.class);
+        ObjectMapper om = new ObjectMapper();
+        om.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.ANY);
+        om.enableDefaultTyping(ObjectMapper.DefaultTyping.NON_FINAL);
+        jackson2JsonRedisSerializer.setObjectMapper(om);
+
         redisTemplate.setConnectionFactory(jedisConnectionFactory());
+        redisTemplate.setKeySerializer(redisSerializer);
+        redisTemplate.setValueSerializer(jackson2JsonRedisSerializer);
+        redisTemplate.setHashValueSerializer(jackson2JsonRedisSerializer);
+
         return redisTemplate;
     }
 
