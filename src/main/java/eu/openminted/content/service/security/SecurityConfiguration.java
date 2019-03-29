@@ -18,7 +18,6 @@ public class SecurityConfiguration {
             DefaultCookieSerializer serializer = new DefaultCookieSerializer();
             serializer.setCookieName("SESSION"); // <1>
             serializer.setCookiePath("/"); // <2>
-            // serializer.setDomainNamePattern("^.+?\\.(\\w+\\.[a-z]+)$"); // <3>
             return serializer;
         } catch (Exception e) {
             log.error("Error in SecurityConfiguration: ", e);
