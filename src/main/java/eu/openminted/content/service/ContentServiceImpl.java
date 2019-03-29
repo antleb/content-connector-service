@@ -6,6 +6,8 @@ import eu.openminted.content.connector.SearchResult;
 import eu.openminted.content.connector.utils.faceting.OMTDFacetEnum;
 import eu.openminted.content.connector.utils.faceting.OMTDFacetLabels;
 import eu.openminted.content.service.messages.JMSProducer;
+import eu.openminted.content.service.threads.QueryResult;
+import eu.openminted.content.service.threads.QueryTask;
 import eu.openminted.content.service.threads.StatusTask;
 import eu.openminted.content.service.threads.ThreadpoolWrapper;
 import eu.openminted.registry.core.domain.Facet;
@@ -70,29 +72,19 @@ public class ContentServiceImpl implements ContentService {
                 connectors.addAll(query.getParams().get(OMTDFacetEnum.SOURCE.value()));
             }
         }
+        ThreadpoolWrapper<QueryResult> threadpool = new ThreadpoolWrapper<>(Executors.newFixedThreadPool(2));
 
-        if (contentConnectors != null) {
-            for (ContentConnector connector : contentConnectors) {
+        // Create and add tasks to the queue
+        for (ContentConnector connector : contentConnectors) {
+            threadpool.addTask(new QueryTask(connector, query, connectors));
+        }
 
-                if (connectors.size() > 0 && !connectors.contains(connector.getSourceName())) continue;
-
-                try {
-
-                    SearchResult res = connector.search(query);
-
-                    Value sourceValue = new Value();
-                    sourceValue.setValue(connector.getSourceName());
-                    sourceValue.setLabel(connector.getSourceName());
-                    sourceValue.setCount(res.getTotalHits());
-                    sourceFacet.getValues().add(sourceValue);
-
-                    merge(result, res);
-                } catch (Exception e){
-                    log.error("Error searching in " + connector.getSourceName(), e);
-                    for(String facet : query.getFacets())
-                        log.error(facet);
-                }
-            }
+        threadpool.invokeAll(4);
+        threadpool.shutdown();
+        List<QueryResult> queryResults= threadpool.getResults();
+        for(QueryResult queryResult : queryResults) {
+            sourceFacet.getValues().add(queryResult.getSourceValue());
+            merge(result, queryResult.getSearchResult());
         }
 
         result.getFacets().add(sourceFacet);
@@ -117,6 +109,82 @@ public class ContentServiceImpl implements ContentService {
 
         return result;
     }
+
+//    @Override
+//    public SearchResult search(Query query) throws IOException {
+//
+//        query.setFrom(0);
+//        query.setTo(1);
+//
+//        if (!query.getFacets().contains(OMTDFacetEnum.PUBLICATION_TYPE.value())) query.getFacets().add(OMTDFacetEnum.PUBLICATION_TYPE.value());
+//        if (!query.getFacets().contains(OMTDFacetEnum.PUBLICATION_YEAR.value())) query.getFacets().add(OMTDFacetEnum.PUBLICATION_YEAR.value());
+//        if (!query.getFacets().contains(OMTDFacetEnum.RIGHTS.value())) query.getFacets().add(OMTDFacetEnum.RIGHTS.value());
+//        if (!query.getFacets().contains(OMTDFacetEnum.DOCUMENT_LANG.value())) query.getFacets().add(OMTDFacetEnum.DOCUMENT_LANG.value());
+//        if (!query.getFacets().contains(OMTDFacetEnum.DOCUMENT_TYPE.value())) query.getFacets().add(OMTDFacetEnum.DOCUMENT_TYPE.value());
+//
+//        SearchResult result = new SearchResult();
+//        Facet sourceFacet = new Facet();
+//        result.setFacets(new ArrayList<>());
+//
+//        sourceFacet.setField(OMTDFacetEnum.SOURCE.value());
+//        sourceFacet.setValues(new ArrayList<>());
+//
+//        // retrieve connectors from query
+//        List<String> connectors = new ArrayList<>();
+//        if (query.getParams() != null) {
+//            if (query.getParams().containsKey(OMTDFacetEnum.SOURCE.value())
+//                    && query.getParams().get(OMTDFacetEnum.SOURCE.value()) != null
+//                    && query.getParams().get(OMTDFacetEnum.SOURCE.value()).size() > 0) {
+//                connectors.addAll(query.getParams().get(OMTDFacetEnum.SOURCE.value()));
+//            }
+//        }
+//
+//        if (contentConnectors != null) {
+//            for (ContentConnector connector : contentConnectors) {
+//
+//                if (connectors.size() > 0 && !connectors.contains(connector.getSourceName())) continue;
+//
+//                try {
+//
+//                    SearchResult res = connector.search(query);
+//
+//                    Value sourceValue = new Value();
+//                    sourceValue.setValue(connector.getSourceName());
+//                    sourceValue.setLabel(connector.getSourceName());
+//                    sourceValue.setCount(res.getTotalHits());
+//                    sourceFacet.getValues().add(sourceValue);
+//
+//                    merge(result, res);
+//                } catch (Exception e){
+//                    log.error("Error searching in " + connector.getSourceName(), e);
+//                    for(String facet : query.getFacets())
+//                        log.error(facet);
+//                }
+//            }
+//        }
+//
+//        result.getFacets().add(sourceFacet);
+//
+//
+//        // Remove values with count 0 and set labels to facets
+//        result.getFacets().forEach(facet-> {
+//            List<Value> valuesToRemove = new ArrayList<>();
+//            facet.getValues().forEach(value -> {
+//
+//                if (value.getCount() == 0) valuesToRemove.add(value);
+//            });
+//
+//            if (valuesToRemove.size() > 0) {
+//                facet.getValues().removeAll(valuesToRemove);
+//            }
+//
+//            OMTDFacetEnum facetEnum = OMTDFacetEnum.fromValue(facet.getField());
+//            if (facetEnum != null)
+//                facet.setLabel(omtdFacetInitializer.getFacetLabelsFromEnum(facetEnum));
+//        });
+//
+//        return result;
+//    }
 
     /**
      *  Standard method that returns the status of the current service
@@ -153,7 +221,7 @@ public class ContentServiceImpl implements ContentService {
     public ServiceStatus status() {
 
         serviceStatus.setMaxFulltextDocuments(contentLimit);
-        ThreadpoolWrapper threadpool = new ThreadpoolWrapper(Executors.newFixedThreadPool(2));
+        ThreadpoolWrapper<String> threadpool = new ThreadpoolWrapper<>(Executors.newFixedThreadPool(2));
 
         // Create and add tasks to the queue
         for (ContentConnector connector : contentConnectors) {

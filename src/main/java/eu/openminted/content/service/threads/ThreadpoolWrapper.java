@@ -10,13 +10,15 @@ import java.util.concurrent.*;
  * A wrapper class for initialising and managing a Threadpool
  */
 
-public class ThreadpoolWrapper {
+public class ThreadpoolWrapper<T> {
 
     private static Logger logger = Logger.getLogger(ThreadpoolWrapper.class);
 
     private ExecutorService executor;
-    private List<Callable<String>> tasksQueue = new ArrayList<>();
-    private List<String> results = new ArrayList<>();
+
+    private List<Callable<T>> tasksQueue = new ArrayList<>();
+
+    private List<T> results = new ArrayList<>();
 
     public ThreadpoolWrapper(ExecutorService executor) {
         this.executor = executor;
@@ -34,26 +36,26 @@ public class ThreadpoolWrapper {
         this.executor = executor;
     }
 
-    public List<Callable<String>> getTasksQueue() {
+    public List<Callable<T>> getTasksQueue() {
         return tasksQueue;
     }
 
-    public void setTasksQueue(List<Callable<String>> tasksQueue) {
+    public void setTasksQueue(List<Callable<T>> tasksQueue) {
         this.tasksQueue = tasksQueue;
     }
 
-    public List<String> getResults() {
+    public List<T> getResults() {
         return results;
     }
 
-    public void setResults(List<String> results) {
+    public void setResults(List<T> results) {
         this.results = results;
     }
 
     /**
      *  Adds a task to the task queue
      */
-    public void addTask(Callable<String> task) {
+    public void addTask(Callable<T> task) {
         logger.debug("Adding task " + task.getClass());
         tasksQueue.add(task);
     }
@@ -65,8 +67,8 @@ public class ThreadpoolWrapper {
     public void invokeAll(int timeout) {
 
         try {
-            List<Future<String>> futures = executor.invokeAll(tasksQueue, timeout, TimeUnit.SECONDS);
-            for (Future<String> future : futures) {
+            List<Future<T>> futures = executor.invokeAll(tasksQueue, timeout, TimeUnit.SECONDS);
+            for (Future<T> future : futures) {
                 if (!future.isCancelled()) {
                     try {
                         results.add(future.get());

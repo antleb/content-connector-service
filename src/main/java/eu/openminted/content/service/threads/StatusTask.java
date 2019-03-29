@@ -18,6 +18,7 @@ import java.util.concurrent.Callable;
 public class StatusTask implements Callable<String> {
 
     private ContentConnector contentConnector;
+
     private static Logger logger = Logger.getLogger(ThreadpoolWrapper.class);
 
     public StatusTask(ContentConnector contentConnector) {
