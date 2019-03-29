@@ -50,14 +50,6 @@
         <constructor-arg index="0" type="String" value="${jms.host}"/>
     </bean>
 
-    <!-- Redis Configuration -->
-    <bean class="org.springframework.session.data.redis.config.annotation.web.http.RedisHttpSessionConfiguration"/>
-    <bean class="org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory">
-        <constructor-arg name="host" value="${redis.host}"/>
-        <constructor-arg name="port" value="${redis.port}"/>
-        <property name="password" value="${redis.password}" />
-    </bean>
-
 
     <security:global-method-security pre-post-annotations="enabled" proxy-target-class="true"
                                      authentication-manager-ref="authenticationManager"/>

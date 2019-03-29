@@ -5,9 +5,17 @@ import org.apache.commons.dbcp2.BasicDataSource;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.cache.RedisCacheManager;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.connection.jedis.JedisConnectionFactory;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
+import org.springframework.data.redis.serializer.StringRedisSerializer;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jms.annotation.EnableJms;
 import org.springframework.jms.config.DefaultJmsListenerContainerFactory;
@@ -15,11 +23,15 @@ import org.springframework.jms.core.JmsTemplate;
 import org.springframework.jms.support.converter.MappingJackson2MessageConverter;
 import org.springframework.jms.support.converter.MessageConverter;
 import org.springframework.jms.support.converter.MessageType;
+import org.springframework.security.oauth2.provider.token.store.redis.RedisTokenStore;
+import org.springframework.session.data.redis.config.annotation.web.http.EnableRedisHttpSession;
 
 import javax.sql.DataSource;
 
 @Configuration
 @EnableJms
+@EnableCaching
+@EnableRedisHttpSession
 @ComponentScan({"eu.openminted.content"})
 public class ServiceConfiguration {
 
@@ -36,6 +48,44 @@ public class ServiceConfiguration {
 
     @Value("${db.password}")
     private String dbPass;
+
+    @Value("${redis.host}")
+    private String redisUrl;
+
+    @Value("${redis.password}")
+    private String redisPassword;
+
+    @Value("${redis.port}")
+    private int redisPort;
+
+    @Bean
+    JedisConnectionFactory jedisConnectionFactory() {
+
+        JedisConnectionFactory jedisConnectionFactory = new JedisConnectionFactory();
+        jedisConnectionFactory.setHostName(redisUrl);
+        jedisConnectionFactory.setPort(redisPort);
+        jedisConnectionFactory.setPassword(redisPassword);
+        jedisConnectionFactory.setUsePool(true);
+
+        return jedisConnectionFactory;
+    }
+
+    @Bean
+    RedisTemplate<Object, Object> redisTemplate() {
+        RedisTemplate<Object, Object> redisTemplate = new RedisTemplate<Object, Object>();
+        redisTemplate.setConnectionFactory(jedisConnectionFactory());
+        return redisTemplate;
+    }
+
+    @Bean
+    CacheManager cacheManager() {
+        return new RedisCacheManager(redisTemplate());
+    }
+
+    @Bean
+    public RedisTokenStore redisTokenStore() {
+        return new RedisTokenStore(jedisConnectionFactory());
+    }
 
 
     @Bean
